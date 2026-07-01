@@ -1,0 +1,13 @@
+[project]
+name = "ubo-project"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "ipykernel>=7.3.0",
+    "jupyter>=1.1.1",
+    "jupyter-server>=2.20.0",
+    "jupyterlab>=4.6.1",
+    "matplotlib>=3.11.0",
+    "pandas>=3.0.3",
+    "ultralytics",
+]

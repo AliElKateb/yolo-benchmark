@@ -1,0 +1,79 @@
+models:
+  yolov5:
+    enabled: true
+    sizes:
+      n:   # nano
+        enabled: true
+        weights: yolov5n.pt
+        imgsz: [640, 640]
+        conf_thres: 0.25
+        iou_thres: 0.45
+      s:   # small
+        enabled: true
+        weights: yolov5s.pt
+        imgsz: [640, 640]
+        conf_thres: 0.25
+        iou_thres: 0.45
+      m:   # medium
+        enabled: false
+        weights: yolov5m.pt
+        imgsz: [640, 640]
+        conf_thres: 0.25
+        iou_thres: 0.45
+      l:   # large
+        enabled: false
+        weights: yolov5l.pt
+        imgsz: [640, 640]
+        conf_thres: 0.25
+        iou_thres: 0.45
+      x:   # xlarge
+        enabled: false
+        weights: yolov5x.pt
+        imgsz: [640, 640]
+        conf_thres: 0.25
+        iou_thres: 0.45
+
+  yolov8:
+    enabled: true
+    sizes:
+      n:   # nano
+        enabled: true
+        weights: yolov8n.pt
+        imgsz: [640, 640]
+        conf_thres: 0.25
+        iou_thres: 0.45
+      s:   # small
+        enabled: true
+        weights: yolov8s.pt
+        imgsz: [640, 640]
+        conf_thres: 0.25
+        iou_thres: 0.45
+      m:   # medium
+        enabled: false
+        weights: yolov8m.pt
+        imgsz: [640, 640]
+        conf_thres: 0.25
+        iou_thres: 0.45
+      l:   # large
+        enabled: false
+        weights: yolov8l.pt
+        imgsz: [640, 640]
+        conf_thres: 0.25
+        iou_thres: 0.45
+      x:   # xlarge
+        enabled: false
+        weights: yolov8x.pt
+        imgsz: [640, 640]
+        conf_thres: 0.25
+        iou_thres: 0.45
+
+inference:
+  device: cpu               # or "cuda:0", "mps", etc.
+  batch_size: 32
+  half: false               # FP16 inference
+  augment: false
+  visualize: false
+
+paths:
+  source: ./data/images
+  output: ./runs/detect
