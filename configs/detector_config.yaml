@@ -75,5 +75,5 @@ inference:
   visualize: false
 
 paths:
-  source: ./data/images
+  source: ./dataset/images
   output: ./runs/detect
