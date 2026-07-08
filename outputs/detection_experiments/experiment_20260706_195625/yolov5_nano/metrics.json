@@ -1,0 +1,36 @@
+{
+  "map50_95": 32.84,
+  "map50": 50.84,
+  "precision": 60.47,
+  "recall": 51.94,
+  "per_class": [
+    {
+      "class": "tool",
+      "map50_95": 32.84,
+      "map50": 50.84
+    },
+    {
+      "class": "tool_b",
+      "map50_95": 32.84,
+      "map50": 50.84
+    },
+    {
+      "class": "void",
+      "map50_95": 32.84,
+      "map50": 50.84
+    }
+  ],
+  "f1_score": 55.88,
+  "preprocess_ms": 1.33,
+  "inference_ms": 23.3,
+  "postprocess_ms": 78.86,
+  "total_per_image_ms": 103.49,
+  "model_params": 2503529,
+  "model_gflops": 0.01,
+  "run_id": "yolov5_nano",
+  "family": "yolov5",
+  "variant": "n",
+  "weights_path": "runs/detect/runs/yolov5_nano/weights/best.pt",
+  "model_size_mb": 4.99,
+  "dataset": "./dataset/drillbit_detection/data.yaml"
+}

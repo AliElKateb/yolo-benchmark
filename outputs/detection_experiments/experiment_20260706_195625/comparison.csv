@@ -1,0 +1,2 @@
+Run ID,Family,Variant,mAP50,mAP50-95,Precision,Recall,F1-Score,Inference (ms),Total (ms/img),Parameters,GFLOPs,Size (MB),Weights
+yolov5_nano,yolov5,n,50.84,32.84,60.47,51.94,55.88,23.3,103.49,2503529,0.01,4.99,runs/detect/runs/yolov5_nano/weights/best.pt

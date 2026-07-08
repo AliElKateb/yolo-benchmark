@@ -1,0 +1,9 @@
+ultralytics
+roboflow
+python-dotenv
+pyyaml
+pandas
+matplotlib
+jupyter
+jupyterlab
+ipykernel
