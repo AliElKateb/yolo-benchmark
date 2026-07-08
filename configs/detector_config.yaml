@@ -1,79 +1,916 @@
-models:
-  yolov5:
+runs:
+  - run_id: "yolov5_nano"
+    model:
+      family: "yolov5"
+      variant: "n"
+      task: "detect"
+    dataset:
+      data_yaml: "./dataset/drillbit_detection/data.yaml"
+      nc: 3
+      names: ["tool", "tool_b", "void"]
+    hyperparameters:
+      lr: 0.01
+      lrf: 0.01
+      momentum: 0.937
+      weight_decay: 0.0005
+      warmup_epochs: 3.0
+      warmup_momentum: 0.8
+      warmup_bias_lr: 0.1
+      box: 0.05
+      cls: 0.5
+      cls_pw: 1.0
+      obj: 1.0
+      obj_pw: 1.0
+      iou_t: 0.20
+      anchor_t: 4.0
+      fl_gamma: 0.0
+      hsv_h: 0.015
+      hsv_s: 0.7
+      hsv_v: 0.4
+      degrees: 0.0
+      translate: 0.1
+      scale: 0.5
+      shear: 0.0
+      perspective: 0.0
+      flipud: 0.0
+      fliplr: 0.5
+      mosaic: 1.0
+      mixup: 0.0
+      copy_paste: 0.0
+    training:
+      epochs: 5
+      batch: 4
+      workers: 2
+      device: "mps"
+      seed: 42
+      early_stopping:
+        patience: 10
+        enabled: true
+      resume: false
+      pretrained: true
+      amp: true
+      deterministic: true
+      single_cls: false
+      image_weights: false
+      multi_scale: false
+      save_period: -1
+      exist_ok: false
+      project: "runs"
+      name: "yolov5_nano"
+      optimizer: "AdamW"
+      cos_lr: false
+      label_smoothing: 0.0
+      freeze: 22
+      cache: false
+    inference:
+      imgsz: [416, 416]
+      conf_thres: 0.25
+      iou_thres: 0.45
+      max_det: 300
+      half: false
+      augment: false
+      visualize: false
+    metadata:
+      description: "YOLOv5 Nano — fastest and lightest variant"
+      tags: ["yolov5", "nano", "baseline"]
+      notes: ""
     enabled: true
-    sizes:
-      n:   # nano
-        enabled: true
-        weights: yolov5n.pt
-        imgsz: [640, 640]
-        conf_thres: 0.25
-        iou_thres: 0.45
-      s:   # small
-        enabled: true
-        weights: yolov5s.pt
-        imgsz: [640, 640]
-        conf_thres: 0.25
-        iou_thres: 0.45
-      m:   # medium
-        enabled: false
-        weights: yolov5m.pt
-        imgsz: [640, 640]
-        conf_thres: 0.25
-        iou_thres: 0.45
-      l:   # large
-        enabled: false
-        weights: yolov5l.pt
-        imgsz: [640, 640]
-        conf_thres: 0.25
-        iou_thres: 0.45
-      x:   # xlarge
-        enabled: false
-        weights: yolov5x.pt
-        imgsz: [640, 640]
-        conf_thres: 0.25
-        iou_thres: 0.45
 
-  yolov8:
+  - run_id: "yolov5_small"
+    model:
+      family: "yolov5"
+      variant: "s"
+      task: "detect"
+    dataset:
+      data_yaml: "./dataset/drillbit_detection/data.yaml"
+      nc: 3
+      names: ["tool", "tool_b", "void"]
+    hyperparameters:
+      lr: 0.01
+      lrf: 0.01
+      momentum: 0.937
+      weight_decay: 0.0005
+      warmup_epochs: 3.0
+      warmup_momentum: 0.8
+      warmup_bias_lr: 0.1
+      box: 0.05
+      cls: 0.5
+      cls_pw: 1.0
+      obj: 1.0
+      obj_pw: 1.0
+      iou_t: 0.20
+      anchor_t: 4.0
+      fl_gamma: 0.0
+      hsv_h: 0.015
+      hsv_s: 0.7
+      hsv_v: 0.4
+      degrees: 0.0
+      translate: 0.1
+      scale: 0.5
+      shear: 0.0
+      perspective: 0.0
+      flipud: 0.0
+      fliplr: 0.5
+      mosaic: 1.0
+      mixup: 0.0
+      copy_paste: 0.0
+    training:
+      epochs: 5
+      batch: 4
+      workers: 2
+      device: "mps"
+      seed: 42
+      early_stopping:
+        patience: 5
+        enabled: true
+      resume: false
+      pretrained: true
+      amp: true
+      deterministic: true
+      single_cls: false
+      image_weights: false
+      multi_scale: false
+      save_period: -1
+      exist_ok: false
+      project: "runs"
+      name: "yolov5_small"
+      optimizer: "SGD"
+      cos_lr: false
+      label_smoothing: 0.0
+      freeze: 0
+      cache: false
+    inference:
+      imgsz: [416, 416]
+      conf_thres: 0.25
+      iou_thres: 0.45
+      max_det: 300
+      half: false
+      augment: false
+      visualize: false
+    metadata:
+      description: "YOLOv5 Small — balanced speed and accuracy"
+      tags: ["yolov5", "small", "baseline"]
+      notes: ""
     enabled: true
-    sizes:
-      n:   # nano
-        enabled: true
-        weights: yolov8n.pt
-        imgsz: [640, 640]
-        conf_thres: 0.25
-        iou_thres: 0.45
-      s:   # small
-        enabled: true
-        weights: yolov8s.pt
-        imgsz: [640, 640]
-        conf_thres: 0.25
-        iou_thres: 0.45
-      m:   # medium
-        enabled: false
-        weights: yolov8m.pt
-        imgsz: [640, 640]
-        conf_thres: 0.25
-        iou_thres: 0.45
-      l:   # large
-        enabled: false
-        weights: yolov8l.pt
-        imgsz: [640, 640]
-        conf_thres: 0.25
-        iou_thres: 0.45
-      x:   # xlarge
-        enabled: false
-        weights: yolov8x.pt
-        imgsz: [640, 640]
-        conf_thres: 0.25
-        iou_thres: 0.45
 
-inference:
-  device: cpu               # or "cuda:0", "mps", etc.
-  batch_size: 32
-  half: false               # FP16 inference
-  augment: false
-  visualize: false
+  - run_id: "yolov5_medium"
+    model:
+      family: "yolov5"
+      variant: "m"
+      task: "detect"
+    dataset:
+      data_yaml: "./dataset/drillbit_detection/data.yaml"
+      nc: 3
+      names: ["tool", "tool_b", "void"]
+    hyperparameters:
+      lr: 0.01
+      lrf: 0.01
+      momentum: 0.937
+      weight_decay: 0.0005
+      warmup_epochs: 3.0
+      warmup_momentum: 0.8
+      warmup_bias_lr: 0.1
+      box: 0.05
+      cls: 0.5
+      cls_pw: 1.0
+      obj: 1.0
+      obj_pw: 1.0
+      iou_t: 0.20
+      anchor_t: 4.0
+      fl_gamma: 0.0
+      hsv_h: 0.015
+      hsv_s: 0.7
+      hsv_v: 0.4
+      degrees: 0.0
+      translate: 0.1
+      scale: 0.5
+      shear: 0.0
+      perspective: 0.0
+      flipud: 0.0
+      fliplr: 0.5
+      mosaic: 1.0
+      mixup: 0.0
+      copy_paste: 0.0
+    training:
+      epochs: 30
+      batch: 4
+      workers: 2
+      device: "mps"
+      seed: 42
+      early_stopping:
+        patience: 5
+        enabled: true
+      resume: false
+      pretrained: true
+      amp: true
+      deterministic: true
+      single_cls: false
+      image_weights: false
+      multi_scale: false
+      save_period: -1
+      exist_ok: false
+      project: "runs"
+      name: "yolov5_medium"
+      optimizer: "SGD"
+      cos_lr: false
+      label_smoothing: 0.0
+      freeze: 0
+      cache: false
+    inference:
+      imgsz: [416, 416]
+      conf_thres: 0.25
+      iou_thres: 0.45
+      max_det: 300
+      half: false
+      augment: false
+      visualize: false
+    metadata:
+      description: "YOLOv5 Medium — good trade-off for most use cases"
+      tags: ["yolov5", "medium", "baseline"]
+      notes: ""
+    enabled: false
 
-paths:
-  source: ./dataset/images
-  output: ./runs/detect
+  - run_id: "yolov5_large"
+    model:
+      family: "yolov5"
+      variant: "l"
+      task: "detect"
+    dataset:
+      data_yaml: "./dataset/drillbit_detection/data.yaml"
+      nc: 3
+      names: ["tool", "tool_b", "void"]
+    hyperparameters:
+      lr: 0.01
+      lrf: 0.01
+      momentum: 0.937
+      weight_decay: 0.0005
+      warmup_epochs: 3.0
+      warmup_momentum: 0.8
+      warmup_bias_lr: 0.1
+      box: 0.05
+      cls: 0.5
+      cls_pw: 1.0
+      obj: 1.0
+      obj_pw: 1.0
+      iou_t: 0.20
+      anchor_t: 4.0
+      fl_gamma: 0.0
+      hsv_h: 0.015
+      hsv_s: 0.7
+      hsv_v: 0.4
+      degrees: 0.0
+      translate: 0.1
+      scale: 0.5
+      shear: 0.0
+      perspective: 0.0
+      flipud: 0.0
+      fliplr: 0.5
+      mosaic: 1.0
+      mixup: 0.0
+      copy_paste: 0.0
+    training:
+      epochs: 30
+      batch: 4
+      workers: 2
+      device: "mps"
+      seed: 42
+      early_stopping:
+        patience: 5
+        enabled: true
+      resume: false
+      pretrained: true
+      amp: true
+      deterministic: true
+      single_cls: false
+      image_weights: false
+      multi_scale: false
+      save_period: -1
+      exist_ok: false
+      project: "runs"
+      name: "yolov5_large"
+      optimizer: "SGD"
+      cos_lr: false
+      label_smoothing: 0.0
+      freeze: 0
+      cache: false
+    inference:
+      imgsz: [416, 416]
+      conf_thres: 0.25
+      iou_thres: 0.45
+      max_det: 300
+      half: false
+      augment: false
+      visualize: false
+    metadata:
+      description: "YOLOv5 Large — high accuracy, heavier compute"
+      tags: ["yolov5", "large", "baseline"]
+      notes: ""
+    enabled: false
+
+  - run_id: "yolov5_xlarge"
+    model:
+      family: "yolov5"
+      variant: "x"
+      task: "detect"
+    dataset:
+      data_yaml: "./dataset/drillbit_detection/data.yaml"
+      nc: 3
+      names: ["tool", "tool_b", "void"]
+    hyperparameters:
+      lr: 0.01
+      lrf: 0.01
+      momentum: 0.937
+      weight_decay: 0.0005
+      warmup_epochs: 3.0
+      warmup_momentum: 0.8
+      warmup_bias_lr: 0.1
+      box: 0.05
+      cls: 0.5
+      cls_pw: 1.0
+      obj: 1.0
+      obj_pw: 1.0
+      iou_t: 0.20
+      anchor_t: 4.0
+      fl_gamma: 0.0
+      hsv_h: 0.015
+      hsv_s: 0.7
+      hsv_v: 0.4
+      degrees: 0.0
+      translate: 0.1
+      scale: 0.5
+      shear: 0.0
+      perspective: 0.0
+      flipud: 0.0
+      fliplr: 0.5
+      mosaic: 1.0
+      mixup: 0.0
+      copy_paste: 0.0
+    training:
+      epochs: 15
+      batch: 4
+      workers: 2
+      device: "mps"
+      seed: 42
+      early_stopping:
+        patience: 5
+        enabled: true
+      resume: false
+      pretrained: true
+      amp: true
+      deterministic: true
+      single_cls: false
+      image_weights: false
+      multi_scale: false
+      save_period: -1
+      exist_ok: false
+      project: "runs"
+      name: "yolov5_xlarge"
+      optimizer: "SGD"
+      cos_lr: false
+      label_smoothing: 0.0
+      freeze: 0
+      cache: false
+    inference:
+      imgsz: [416, 416]
+      conf_thres: 0.25
+      iou_thres: 0.45
+      max_det: 300
+      half: false
+      augment: false
+      visualize: false
+    metadata:
+      description: "YOLOv5 XLarge — maximum accuracy, highest compute"
+      tags: ["yolov5", "xlarge", "baseline"]
+      notes: ""
+    enabled: false
+
+  - run_id: "yolov8_nano"
+    model:
+      family: "yolov8"
+      variant: "n"
+      task: "detect"
+    dataset:
+      data_yaml: "./dataset/drillbit_detection/data.yaml"
+      nc: 3
+      names: ["tool", "tool_b", "void"]
+    hyperparameters:
+      lr: 0.01
+      lrf: 0.01
+      momentum: 0.937
+      weight_decay: 0.0005
+      warmup_epochs: 3.0
+      warmup_momentum: 0.8
+      warmup_bias_lr: 0.1
+      box: 7.5
+      cls: 0.5
+      dfl: 1.5
+      hsv_h: 0.015
+      hsv_s: 0.7
+      hsv_v: 0.4
+      degrees: 0.0
+      translate: 0.1
+      scale: 0.5
+      shear: 0.0
+      perspective: 0.0
+      flipud: 0.0
+      fliplr: 0.5
+      mosaic: 1.0
+      mixup: 0.0
+      copy_paste: 0.0
+    training:
+      epochs: 5
+      batch: 4
+      workers: 2
+      device: "mps"
+      seed: 42
+      early_stopping:
+        patience: 5
+        enabled: true
+      resume: false
+      pretrained: true
+      amp: true
+      deterministic: true
+      single_cls: false
+      image_weights: false
+      multi_scale: false
+      save_period: -1
+      exist_ok: false
+      project: "runs"
+      name: "yolov8_nano"
+      optimizer: "AdamW"
+      cos_lr: false
+      label_smoothing: 0.0
+      freeze: 0
+      cache: false
+      overlap_mask: true
+      mask_ratio: 4
+      dropout: 0.0
+    inference:
+      imgsz: [416, 416]
+      conf_thres: 0.25
+      iou_thres: 0.45
+      max_det: 300
+      half: false
+      augment: false
+      visualize: false
+    metadata:
+      description: "YOLOv8 Nano — fastest and lightest variant"
+      tags: ["yolov8", "nano", "baseline"]
+      notes: ""
+    enabled: true
+
+  - run_id: "yolov8_small"
+    model:
+      family: "yolov8"
+      variant: "s"
+      task: "detect"
+    dataset:
+      data_yaml: "./dataset/drillbit_detection/data.yaml"
+      nc: 3
+      names: ["tool", "tool_b", "void"]
+    hyperparameters:
+      lr: 0.01
+      lrf: 0.01
+      momentum: 0.937
+      weight_decay: 0.0005
+      warmup_epochs: 3.0
+      warmup_momentum: 0.8
+      warmup_bias_lr: 0.1
+      box: 7.5
+      cls: 0.5
+      dfl: 1.5
+      hsv_h: 0.015
+      hsv_s: 0.7
+      hsv_v: 0.4
+      degrees: 0.0
+      translate: 0.1
+      scale: 0.5
+      shear: 0.0
+      perspective: 0.0
+      flipud: 0.0
+      fliplr: 0.5
+      mosaic: 1.0
+      mixup: 0.0
+      copy_paste: 0.0
+    training:
+      epochs: 5
+      batch: 4
+      workers: 2
+      device: "mps"
+      seed: 42
+      early_stopping:
+        patience: 5
+        enabled: true
+      resume: false
+      pretrained: true
+      amp: true
+      deterministic: true
+      single_cls: false
+      image_weights: false
+      multi_scale: false
+      save_period: -1
+      exist_ok: false
+      project: "runs"
+      name: "yolov8_small"
+      optimizer: "AdamW"
+      cos_lr: false
+      label_smoothing: 0.0
+      freeze: 0
+      cache: false
+      overlap_mask: true
+      mask_ratio: 4
+      dropout: 0.0
+    inference:
+      imgsz: [416, 416]
+      conf_thres: 0.25
+      iou_thres: 0.45
+      max_det: 300
+      half: false
+      augment: false
+      visualize: false
+    metadata:
+      description: "YOLOv8 Small — balanced speed and accuracy"
+      tags: ["yolov8", "small", "baseline"]
+      notes: ""
+    enabled: true
+
+  - run_id: "yolov8_medium"
+    model:
+      family: "yolov8"
+      variant: "m"
+      task: "detect"
+    dataset:
+      data_yaml: "./dataset/drillbit_detection/data.yaml"
+      nc: 3
+      names: ["tool", "tool_b", "void"]
+    hyperparameters:
+      lr: 0.01
+      lrf: 0.01
+      momentum: 0.937
+      weight_decay: 0.0005
+      warmup_epochs: 3.0
+      warmup_momentum: 0.8
+      warmup_bias_lr: 0.1
+      box: 7.5
+      cls: 0.5
+      dfl: 1.5
+      hsv_h: 0.015
+      hsv_s: 0.7
+      hsv_v: 0.4
+      degrees: 0.0
+      translate: 0.1
+      scale: 0.5
+      shear: 0.0
+      perspective: 0.0
+      flipud: 0.0
+      fliplr: 0.5
+      mosaic: 1.0
+      mixup: 0.0
+      copy_paste: 0.0
+    training:
+      epochs: 35
+      batch: 4
+      workers: 2
+      device: "mps"
+      seed: 42
+      early_stopping:
+        patience: 5
+        enabled: true
+      resume: false
+      pretrained: true
+      amp: true
+      deterministic: true
+      single_cls: false
+      image_weights: false
+      multi_scale: false
+      save_period: -1
+      exist_ok: false
+      project: "runs"
+      name: "yolov8_medium"
+      optimizer: "AdamW"
+      cos_lr: false
+      label_smoothing: 0.0
+      freeze: 0
+      cache: false
+      overlap_mask: true
+      mask_ratio: 4
+      dropout: 0.0
+    inference:
+      imgsz: [416, 416]
+      conf_thres: 0.25
+      iou_thres: 0.45
+      max_det: 300
+      half: false
+      augment: false
+      visualize: false
+    metadata:
+      description: "YOLOv8 Medium — good trade-off for most use cases"
+      tags: ["yolov8", "medium", "baseline"]
+      notes: ""
+    enabled: false
+
+  - run_id: "yolov8_large"
+    model:
+      family: "yolov8"
+      variant: "l"
+      task: "detect"
+    dataset:
+      data_yaml: "./dataset/drillbit_detection/data.yaml"
+      nc: 3
+      names: ["tool", "tool_b", "void"]
+    hyperparameters:
+      lr: 0.01
+      lrf: 0.01
+      momentum: 0.937
+      weight_decay: 0.0005
+      warmup_epochs: 3.0
+      warmup_momentum: 0.8
+      warmup_bias_lr: 0.1
+      box: 7.5
+      cls: 0.5
+      dfl: 1.5
+      hsv_h: 0.015
+      hsv_s: 0.7
+      hsv_v: 0.4
+      degrees: 0.0
+      translate: 0.1
+      scale: 0.5
+      shear: 0.0
+      perspective: 0.0
+      flipud: 0.0
+      fliplr: 0.5
+      mosaic: 1.0
+      mixup: 0.0
+      copy_paste: 0.0
+    training:
+      epochs: 35
+      batch: 4
+      workers: 2
+      device: "mps"
+      seed: 42
+      early_stopping:
+        patience: 5
+        enabled: true
+      resume: false
+      pretrained: true
+      amp: true
+      deterministic: true
+      single_cls: false
+      image_weights: false
+      multi_scale: false
+      save_period: -1
+      exist_ok: false
+      project: "runs"
+      name: "yolov8_large"
+      optimizer: "AdamW"
+      cos_lr: false
+      label_smoothing: 0.0
+      freeze: 0
+      cache: false
+      overlap_mask: true
+      mask_ratio: 4
+      dropout: 0.0
+    inference:
+      imgsz: [416, 416]
+      conf_thres: 0.25
+      iou_thres: 0.45
+      max_det: 300
+      half: false
+      augment: false
+      visualize: false
+    metadata:
+      description: "YOLOv8 Large — high accuracy, heavier compute"
+      tags: ["yolov8", "large", "baseline"]
+      notes: ""
+    enabled: false
+
+  - run_id: "yolov8_xlarge"
+    model:
+      family: "yolov8"
+      variant: "x"
+      task: "detect"
+    dataset:
+      data_yaml: "./dataset/drillbit_detection/data.yaml"
+      nc: 3
+      names: ["tool", "tool_b", "void"]
+    hyperparameters:
+      lr: 0.01
+      lrf: 0.01
+      momentum: 0.937
+      weight_decay: 0.0005
+      warmup_epochs: 3.0
+      warmup_momentum: 0.8
+      warmup_bias_lr: 0.1
+      box: 7.5
+      cls: 0.5
+      dfl: 1.5
+      hsv_h: 0.015
+      hsv_s: 0.7
+      hsv_v: 0.4
+      degrees: 0.0
+      translate: 0.1
+      scale: 0.5
+      shear: 0.0
+      perspective: 0.0
+      flipud: 0.0
+      fliplr: 0.5
+      mosaic: 1.0
+      mixup: 0.0
+      copy_paste: 0.0
+    training:
+      epochs: 35
+      batch: 4
+      workers: 2
+      device: "mps"
+      seed: 42
+      early_stopping:
+        patience: 5
+        enabled: true
+      resume: false
+      pretrained: true
+      amp: true
+      deterministic: true
+      single_cls: false
+      image_weights: false
+      multi_scale: false
+      save_period: -1
+      exist_ok: false
+      project: "runs"
+      name: "yolov8_xlarge"
+      optimizer: "AdamW"
+      cos_lr: false
+      label_smoothing: 0.0
+      freeze: 0
+      cache: false
+      overlap_mask: true
+      mask_ratio: 4
+      dropout: 0.0
+    inference:
+      imgsz: [416, 416]
+      conf_thres: 0.25
+      iou_thres: 0.45
+      max_det: 300
+      half: false
+      augment: false
+      visualize: false
+    metadata:
+      description: "YOLOv8 XLarge — maximum accuracy, highest compute"
+      tags: ["yolov8", "xlarge", "baseline"]
+      notes: ""
+    enabled: false
+
+  # ──────────────────────────────────────────────
+  # Mechanical tools-10000 runs (5 classes)
+  # Dataset: mechanical-tools/mechanical-tools-10000 v3
+  # ──────────────────────────────────────────────
+  - run_id: "mech_yolov5_nano"
+    model: {family: "yolov5", variant: "n", task: "detect"}
+    dataset:
+      data_yaml: "./dataset/mechanical_tools/data.yaml"
+      nc: 5
+      names: ["drill", "hammer", "pliers", "screwdriver", "wrench"]
+    hyperparameters:
+      {lr: 0.01, lrf: 0.01, momentum: 0.937, weight_decay: 0.0005,
+       warmup_epochs: 3.0, warmup_momentum: 0.8, warmup_bias_lr: 0.1,
+       box: 0.05, cls: 0.5, cls_pw: 1.0, obj: 1.0, obj_pw: 1.0,
+       iou_t: 0.20, anchor_t: 4.0, fl_gamma: 0.0,
+       hsv_h: 0.015, hsv_s: 0.7, hsv_v: 0.4, degrees: 0.0,
+       translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
+       flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
+    training:
+      {epochs: 5, batch: 4, workers: 2, device: "mps", seed: 42,
+       early_stopping: {patience: 10, enabled: true},
+       resume: false, pretrained: true, amp: true, deterministic: true,
+       single_cls: false, image_weights: false, multi_scale: false,
+       save_period: -1, exist_ok: false, project: "runs", name: "mech_yolov5_nano",
+       optimizer: "AdamW", cos_lr: false, label_smoothing: 0.0, freeze: 22, cache: false}
+    inference:
+      {imgsz: [416, 416], conf_thres: 0.25, iou_thres: 0.45,
+       max_det: 300, half: false, augment: false, visualize: false}
+    metadata:
+      {description: "YOLOv5 Nano on Mechanical tools-10000",
+       tags: ["yolov5", "nano", "mechanical"], notes: ""}
+    enabled: false
+
+  - run_id: "mech_yolov5_small"
+    model: {family: "yolov5", variant: "s", task: "detect"}
+    dataset:
+      data_yaml: "./dataset/mechanical_tools/data.yaml"
+      nc: 5
+      names: ["drill", "hammer", "pliers", "screwdriver", "wrench"]
+    hyperparameters:
+      {lr: 0.01, lrf: 0.01, momentum: 0.937, weight_decay: 0.0005,
+       warmup_epochs: 3.0, warmup_momentum: 0.8, warmup_bias_lr: 0.1,
+       box: 0.05, cls: 0.5, cls_pw: 1.0, obj: 1.0, obj_pw: 1.0,
+       iou_t: 0.20, anchor_t: 4.0, fl_gamma: 0.0,
+       hsv_h: 0.015, hsv_s: 0.7, hsv_v: 0.4, degrees: 0.0,
+       translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
+       flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
+    training:
+      {epochs: 5, batch: 4, workers: 2, device: "mps", seed: 42,
+       early_stopping: {patience: 5, enabled: true},
+       resume: false, pretrained: true, amp: true, deterministic: true,
+       single_cls: false, image_weights: false, multi_scale: false,
+       save_period: -1, exist_ok: false, project: "runs", name: "mech_yolov5_small",
+       optimizer: "SGD", cos_lr: false, label_smoothing: 0.0, freeze: 0, cache: false}
+    inference:
+      {imgsz: [416, 416], conf_thres: 0.25, iou_thres: 0.45,
+       max_det: 300, half: false, augment: false, visualize: false}
+    metadata:
+      {description: "YOLOv5 Small on Mechanical tools-10000",
+       tags: ["yolov5", "small", "mechanical"], notes: ""}
+    enabled: false
+
+  - run_id: "mech_yolov8_nano"
+    model: {family: "yolov8", variant: "n", task: "detect"}
+    dataset:
+      data_yaml: "./dataset/mechanical_tools/data.yaml"
+      nc: 5
+      names: ["drill", "hammer", "pliers", "screwdriver", "wrench"]
+    hyperparameters:
+      {lr: 0.01, lrf: 0.01, momentum: 0.937, weight_decay: 0.0005,
+       warmup_epochs: 3.0, warmup_momentum: 0.8, warmup_bias_lr: 0.1,
+       box: 7.5, cls: 0.5, dfl: 1.5,
+       hsv_h: 0.015, hsv_s: 0.7, hsv_v: 0.4, degrees: 0.0,
+       translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
+       flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
+    training:
+      {epochs: 5, batch: 4, workers: 2, device: "mps", seed: 42,
+       early_stopping: {patience: 5, enabled: true},
+       resume: false, pretrained: true, amp: true, deterministic: true,
+       single_cls: false, image_weights: false, multi_scale: false,
+       save_period: -1, exist_ok: false, project: "runs", name: "mech_yolov8_nano",
+       optimizer: "AdamW", cos_lr: false, label_smoothing: 0.0, freeze: 0, cache: false,
+       overlap_mask: true, mask_ratio: 4, dropout: 0.0}
+    inference:
+      {imgsz: [416, 416], conf_thres: 0.25, iou_thres: 0.45,
+       max_det: 300, half: false, augment: false, visualize: false}
+    metadata:
+      {description: "YOLOv8 Nano on Mechanical tools-10000",
+       tags: ["yolov8", "nano", "mechanical"], notes: ""}
+    enabled: false
+
+  - run_id: "mech_yolov8_small"
+    model: {family: "yolov8", variant: "s", task: "detect"}
+    dataset:
+      data_yaml: "./dataset/mechanical_tools/data.yaml"
+      nc: 5
+      names: ["drill", "hammer", "pliers", "screwdriver", "wrench"]
+    hyperparameters:
+      {lr: 0.01, lrf: 0.01, momentum: 0.937, weight_decay: 0.0005,
+       warmup_epochs: 3.0, warmup_momentum: 0.8, warmup_bias_lr: 0.1,
+       box: 7.5, cls: 0.5, dfl: 1.5,
+       hsv_h: 0.015, hsv_s: 0.7, hsv_v: 0.4, degrees: 0.0,
+       translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
+       flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
+    training:
+      {epochs: 5, batch: 4, workers: 2, device: "mps", seed: 42,
+       early_stopping: {patience: 5, enabled: true},
+       resume: false, pretrained: true, amp: true, deterministic: true,
+       single_cls: false, image_weights: false, multi_scale: false,
+       save_period: -1, exist_ok: false, project: "runs", name: "mech_yolov8_small",
+       optimizer: "AdamW", cos_lr: false, label_smoothing: 0.0, freeze: 0, cache: false,
+       overlap_mask: true, mask_ratio: 4, dropout: 0.0}
+    inference:
+      {imgsz: [416, 416], conf_thres: 0.25, iou_thres: 0.45,
+       max_det: 300, half: false, augment: false, visualize: false}
+    metadata:
+      {description: "YOLOv8 Small on Mechanical tools-10000",
+       tags: ["yolov8", "small", "mechanical"], notes: ""}
+    enabled: false
+
+evaluation:
+  output_dir: "./outputs/detection_experiments"
+  split: "test"                   # "val" or "test"
+  batch: 4
+  conf_thres: 0.25
+  iou_thres: 0.45
+  half: false
+  device: "mps"
+
+# ============================================================
+# TinyTrain — Selective Retraining (Frozen for this step)
+# ============================================================
+# Uncomment and configure when ready for TinyTrain usage.
+#
+# tiny_train:
+#   enabled: false
+#   fisher:
+#     samples: 256
+#     batch_size: 32
+#     score_layers: ["conv", "c2f", "bottleneck"]
+#     normalize: true
+#   freeze:
+#     strategy: "threshold"       # "threshold" | "percentile" | "top_k"
+#     threshold: 0.01
+#     percentile: 50
+#     top_k: 100
+#   fine_tune:
+#     epochs: 20
+#     lr: 0.001
+#     lrf: 0.01
+#     freeze_bn: true
+#     optimizer: "AdamW"
+#   debug:
+#     plot_importance: false
+#     save_scores: false

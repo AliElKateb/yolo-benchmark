@@ -9,3 +9,4 @@ dist/
 build/
 *.pt
 runs/
+.DS_Store
