@@ -1,0 +1,31 @@
+{
+  "map50_95": 0.0,
+  "map50": 0.0,
+  "precision": 0.0,
+  "recall": 0.0,
+  "per_class": [
+    {
+      "class": "tool",
+      "map50_95": 0.0,
+      "map50": 0.0
+    },
+    {
+      "class": "tool_b",
+      "map50_95": 0.0,
+      "map50": 0.0
+    }
+  ],
+  "f1_score": 0.0,
+  "preprocess_ms": 21.11,
+  "inference_ms": 206.41,
+  "postprocess_ms": 47.31,
+  "total_per_image_ms": 274.84,
+  "model_params": 11126358,
+  "model_gflops": 0.02,
+  "run_id": "yolov8_small",
+  "family": "yolov8",
+  "variant": "s",
+  "weights_path": "runs/detect/runs/yolov8_small-3/weights/best.pt",
+  "model_size_mb": 21.44,
+  "dataset": "dataset/cat_dog.v1i.yolov8/data.yaml"
+}

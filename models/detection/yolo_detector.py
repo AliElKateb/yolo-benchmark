@@ -91,18 +91,12 @@ class YOLODetector(BaseModel):
             "mixup": hp.get("mixup", 0.0),
             "copy_paste": hp.get("copy_paste", 0.0),
             "resume": tr.get("resume", False),
-            "image_weights": tr.get("image_weights", False),
             "multi_scale": tr.get("multi_scale", False),
         }
 
         if family == "yolov5":
             args.update({
                 "cls_pw": hp.get("cls_pw", 1.0),
-                "obj": hp.get("obj", 1.0),
-                "obj_pw": hp.get("obj_pw", 1.0),
-                "iou_t": hp.get("iou_t", 0.20),
-                "anchor_t": hp.get("anchor_t", 4.0),
-                "fl_gamma": hp.get("fl_gamma", 0.0),
             })
 
         if family == "yolov8":

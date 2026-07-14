@@ -1,0 +1,2 @@
+Run ID,Family,Variant,mAP50,mAP50-95,Precision,Recall,F1-Score,Inference (ms),Total (ms/img),Parameters,GFLOPs,Size (MB),Weights
+yolov8_small,yolov8,s,0.0,0.0,0.0,0.0,0.0,206.41,274.84,11126358,0.02,21.44,runs/detect/runs/yolov8_small-3/weights/best.pt
