@@ -9,4 +9,6 @@ dist/
 build/
 *.pt
 runs/
+outputs/
+dataset/
 .DS_Store
