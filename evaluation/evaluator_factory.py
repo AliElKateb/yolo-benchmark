@@ -10,23 +10,10 @@ from evaluation.base_evaluation import BaseEvaluator
 from evaluation.detector.yolo_evaluator import YOLOEvaluator
 
 
-def create_evaluator(model: BaseModel, config: RunConfig) -> BaseEvaluator:
-    """
-    Create the evaluator matching the model's family.
-
-    Args:
-        model: An instantiated model (e.g. YOLODetector).
-        config: The run configuration.
-
-    Returns:
-        A concrete BaseEvaluator subclass ready to run evaluation.
-
-    Raises:
-        ValueError: If the model family has no registered evaluator.
-    """
+def create_evaluator(model: BaseModel, config: RunConfig, experiment_name: str | None = None) -> BaseEvaluator:
     family = config.family
 
     if family in ("yolov5", "yolov8"):
-        return YOLOEvaluator(model, config)
+        return YOLOEvaluator(model, config, experiment_name=experiment_name)
 
     raise ValueError(f"No evaluator registered for model family: {family}")

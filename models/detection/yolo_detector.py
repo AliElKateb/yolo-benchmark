@@ -33,35 +33,18 @@ class YOLODetector(BaseModel):
         return self._model
 
     def load(self, weights_path: str | Path | None = None):
-        """
-        Load pretrained weights into the model.
-
-        Args:
-            weights_path: Path to .pt weights file.
-                          Defaults to e.g. 'yolov8n.pt' based on family+variant.
-        """
         path = weights_path or f"{self.family}{self.variant}.pt"
         self._model = YOLO(str(path))
 
-    def train(self, **override_kwargs) -> dict[str, Any] | None:
-        """
-        Train the model using settings from the run configuration.
-
-        Builds a kwargs dict from the run's hyperparameters, training, and
-        dataset sections, then passes everything to Ultralytics' model.train().
-        Additional kwargs override any config values.
-
-        Returns:
-            Training results dict with metrics per epoch.
-        """
+    def train(self, **override_kwargs) -> Any:
         if self._model is None:
             raise RuntimeError("Model not loaded. Call load() first.")
 
         hp = self._config.hyperparameters
         tr = self._config.training
         ds = self._config.dataset
+        family = self._config.family
 
-        # Point Ultralytics to the dataset's data.yaml
         data_yaml = ds.get("data_yaml", "./dataset/data.yaml")
 
         args = {
@@ -82,10 +65,8 @@ class YOLODetector(BaseModel):
             "warmup_bias_lr": hp.get("warmup_bias_lr", 0.1),
             "box": hp.get("box", 7.5),
             "cls": hp.get("cls", 0.5),
-            "dfl": hp.get("dfl", 1.5),
             "cos_lr": tr.get("cos_lr", False),
             "seed": tr.get("seed", 42),
-            "pretrained": tr.get("pretrained", True),
             "amp": tr.get("amp", False),
             "single_cls": tr.get("single_cls", False),
             "label_smoothing": tr.get("label_smoothing", 0.0),
@@ -109,23 +90,34 @@ class YOLODetector(BaseModel):
             "mosaic": hp.get("mosaic", 1.0),
             "mixup": hp.get("mixup", 0.0),
             "copy_paste": hp.get("copy_paste", 0.0),
+            "resume": tr.get("resume", False),
+            "image_weights": tr.get("image_weights", False),
+            "multi_scale": tr.get("multi_scale", False),
         }
+
+        if family == "yolov5":
+            args.update({
+                "cls_pw": hp.get("cls_pw", 1.0),
+                "obj": hp.get("obj", 1.0),
+                "obj_pw": hp.get("obj_pw", 1.0),
+                "iou_t": hp.get("iou_t", 0.20),
+                "anchor_t": hp.get("anchor_t", 4.0),
+                "fl_gamma": hp.get("fl_gamma", 0.0),
+            })
+
+        if family == "yolov8":
+            args.update({
+                "dfl": hp.get("dfl", 1.5),
+                "overlap_mask": tr.get("overlap_mask", True),
+                "mask_ratio": tr.get("mask_ratio", 4),
+                "dropout": tr.get("dropout", 0.0),
+            })
 
         args.update(override_kwargs)
         results = self._model.train(**args)
         return results
 
     def predict(self, source: str | Path | list[str], **kwargs) -> Any:
-        """
-        Run inference on images.
-
-        Args:
-            source: Path to image, directory, video, or list of paths.
-            **kwargs: Override any inference setting from the config.
-
-        Returns:
-            List of Ultralytics Results objects (one per image).
-        """
         if self._model is None:
             raise RuntimeError("Model not loaded. Call load() first.")
 
@@ -147,18 +139,6 @@ class YOLODetector(BaseModel):
         return self._model.predict(**args)
 
     def val(self, **kwargs) -> Any:
-        """
-        Run validation on the dataset's test/val split.
-
-        Uses the data.yaml from the run config to locate the validation
-        images and labels. Returns a DetMetrics object with all metrics.
-
-        Args:
-            **kwargs: Override any validation parameter (batch, imgsz, conf, etc.).
-
-        Returns:
-            Ultralytics DetMetrics object with mAP, precision, recall, etc.
-        """
         if self._model is None:
             raise RuntimeError("Model not loaded. Call load() first.")
 
@@ -181,13 +161,11 @@ class YOLODetector(BaseModel):
         return self._model.val(**args)
 
     def save(self, path: str | Path):
-        """Save trained model weights to disk."""
         if self._model is None:
             raise RuntimeError("Model not loaded. Call load() first.")
         self._model.save(str(path))
 
     def export(self, format: str = "onnx", path: str | Path | None = None) -> str:
-        """Export the model to the specified format (ONNX, TorchScript, etc.)."""
         if self._model is None:
             raise RuntimeError("Model not loaded. Call load() first.")
         return self._model.export(format=format)

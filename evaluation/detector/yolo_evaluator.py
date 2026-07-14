@@ -3,9 +3,10 @@ Evaluator for YOLOv5/YOLOv8 detection models.
 
 Loads a trained model's weights, runs validation on the test split,
 extracts all metrics (mAP, precision, recall, speed, model size),
-and saves results to the experiments output directory.
+and saves results under outputs/detection/<experiment_name>/<run_id>/.
 """
 
+import csv
 import json
 import time
 from pathlib import Path
@@ -21,11 +22,12 @@ class YOLOEvaluator(BaseEvaluator):
     Evaluates a trained YOLO detector on all standard metrics.
 
     Results are saved as JSON and aggregated into a comparison CSV
-    under outputs/detection_experiments/<experiment_timestamp>/.
+    under outputs/detection/<experiment_name>/.
     """
 
-    def __init__(self, model: BaseModel, config: RunConfig):
+    def __init__(self, model: BaseModel, config: RunConfig, experiment_name: str | None = None):
         super().__init__(model, config)
+        self._experiment_name = experiment_name
         self._experiment_dir: Path | None = None
         self._run_dir: Path | None = None
 
@@ -35,30 +37,22 @@ class YOLOEvaluator(BaseEvaluator):
         return self._experiment_dir
 
     def _resolve_weights(self, weights_path: str | Path | None = None) -> Path:
-        """
-        Find the trained weights file.
-
-        Checks, in order:
-          1. Explicitly provided path.
-          2. Various ultralytics output path patterns for this run.
-        """
         if weights_path is not None:
             return Path(weights_path)
 
         run_id = self._config.run_id
-        project = self._config.training.get("project", "")
         name = self._config.training.get("name", run_id)
-        task = self._config.get("model", {}).get("task", "detect")
 
-        # Ultralytics nests output as: runs/{task}/{project}/{name}/weights/
-        # Try common patterns including old project=runs/train and new project=runs
         candidate_names = [name, run_id]
-        candidate_projects = [
-            f"runs/{task}/{project}" if project else f"runs/{task}",
-            f"runs/{task}/runs/train",
-            f"runs/{task}/runs",
+        candidate_projects = []
+
+        if self._experiment_name:
+            candidate_projects.append(f"outputs/detection/{self._experiment_name}")
+
+        candidate_projects.extend([
             "runs/detect",
-        ]
+            "runs/train",
+        ])
 
         candidates = []
         for p in candidate_projects:
@@ -66,20 +60,10 @@ class YOLOEvaluator(BaseEvaluator):
                 candidates.append(Path(f"{p}/{n}/weights/best.pt"))
                 candidates.append(Path(f"{p}/{n}/weights/last.pt"))
 
-        # Deduplicate while preserving order
-        seen = set()
-        unique = []
         for path in candidates:
-            resolved = path.resolve()
-            if resolved not in seen:
-                seen.add(resolved)
-                unique.append(path)
-
-        for path in unique:
             if path.exists():
                 return path
 
-        # Fallback: search for ultralytics auto-numbered directories (e.g. yolov5_nano-3)
         for p in candidate_projects:
             base_dir = Path(p)
             if not base_dir.exists():
@@ -92,36 +76,18 @@ class YOLOEvaluator(BaseEvaluator):
 
         raise FileNotFoundError(
             f"No trained weights found for {run_id}. "
-            f"Tried: {[str(p) for p in unique]}"
+            f"Tried: {[str(p) for p in candidates]}"
         )
 
     def _setup_output_dir(self):
-        """
-        Create a timestamped experiment directory under detection_experiments.
-
-        Each run within an experiment gets its own subfolder.
-        """
-        ev = self._config.global_config.get("evaluation", {})
-        base = Path(ev.get("output_dir", "./outputs/detection_experiments"))
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-
-        self._experiment_dir = base / f"experiment_{timestamp}"
+        exp_name = self._experiment_name or f"eval_{time.strftime('%Y%m%d_%H%M%S')}"
+        self._experiment_dir = Path(f"outputs/detection/{exp_name}")
         self._experiment_dir.mkdir(parents=True, exist_ok=True)
 
         self._run_dir = self._experiment_dir / self._config.run_id
         self._run_dir.mkdir(parents=True, exist_ok=True)
 
     def _extract_metrics(self, val_results, trained_model=None) -> dict[str, Any]:
-        """
-        Extract all relevant metrics from Ultralytics validation results.
-
-        Args:
-            val_results: DetMetrics object from model.val().
-            trained_model: The underlying YOLO model (for complexity stats).
-
-        Returns:
-            Flat dict of metric names to values.
-        """
         metrics = {}
 
         if hasattr(val_results, "box") and val_results.box is not None:
@@ -136,21 +102,28 @@ class YOLOEvaluator(BaseEvaluator):
             metrics["recall"] = safe_val(box.mr)
 
             per_class = []
-            try:
-                if hasattr(box, "ap_class_index") and box.ap_class_index is not None:
-                    class_indices = box.ap_class_index
-                    if hasattr(class_indices, "__len__"):
-                        names = self._config.dataset.get("names", [])
-                        for cls_idx in class_indices:
-                            cls_idx = int(cls_idx)
-                            cls_name = names[cls_idx] if cls_idx < len(names) else str(cls_idx)
-                            per_class.append({
-                                "class": cls_name,
-                                "map50_95": safe_val(box.map) if hasattr(box, "map") else None,
-                                "map50": safe_val(box.map50) if hasattr(box, "map50") else None,
-                            })
-            except (TypeError, IndexError, ValueError):
-                pass
+            if hasattr(box, "ap_class_index") and box.ap_class_index is not None:
+                class_indices = box.ap_class_index
+                if hasattr(class_indices, "__len__") and len(class_indices) > 0:
+                    names = self._config.dataset.get("names", [])
+                    has_per_class_ap = (
+                        hasattr(box, "ap") and box.ap is not None
+                        and hasattr(box.ap, "__len__") and len(box.ap) == len(class_indices)
+                    )
+                    for i, cls_idx in enumerate(class_indices):
+                        cls_idx = int(cls_idx)
+                        cls_name = names[cls_idx] if cls_idx < len(names) else str(cls_idx)
+                        if has_per_class_ap:
+                            ap50_95 = safe_val(box.ap[i].mean()) if hasattr(box.ap[i], "mean") else safe_val(box.ap[i])
+                            ap50 = safe_val(box.ap50[i]) if hasattr(box, "ap50") and box.ap50 is not None else safe_val(box.ap[i]) if hasattr(box.ap[i], "__len__") and len(box.ap[i]) >= 2 else None
+                        else:
+                            ap50_95 = safe_val(box.map)
+                            ap50 = safe_val(box.map50)
+                        per_class.append({
+                            "class": cls_name,
+                            "map50_95": ap50_95,
+                            "map50": ap50,
+                        })
             metrics["per_class"] = per_class
 
             p = metrics.get("precision")
@@ -169,29 +142,22 @@ class YOLOEvaluator(BaseEvaluator):
                 sum(speed.get(k, 0) for k in ("preprocess", "inference", "postprocess")), 2
             )
 
-        # Model complexity: read from the trained YOLO model directly
         if trained_model is not None:
             try:
                 params = sum(p.numel() for p in trained_model.parameters())
                 metrics["model_params"] = params
-                metrics["model_gflops"] = round(params * 2 / 1e9, 2)
             except Exception:
                 pass
 
         return metrics
 
     def _get_model_file_size(self, weights_path: Path) -> float:
-        """Get the model weights file size in MB."""
         return round(weights_path.stat().st_size / (1024 * 1024), 2)
 
     def _save_results(self, weights_path: Path, metrics: dict[str, Any]):
-        """
-        Save evaluation results to JSON and append to comparison CSV.
-        """
         if self._run_dir is None:
             return
 
-        # Add metadata to the saved results
         metrics["run_id"] = self._config.run_id
         metrics["family"] = self._config.family
         metrics["variant"] = self._config.variant
@@ -205,18 +171,10 @@ class YOLOEvaluator(BaseEvaluator):
 
         print(f"  Results saved to {json_path}")
 
-        # Append to comparison CSV
         csv_path = self._experiment_dir / "comparison.csv"
         self._append_to_csv(csv_path, metrics)
 
     def _append_to_csv(self, csv_path: Path, metrics: dict[str, Any]):
-        """
-        Append a row to the comparison CSV.
-
-        Creates the file with a header if it doesn't exist yet.
-        """
-        import csv
-
         field_map = {
             "run_id": "Run ID",
             "family": "Family",
@@ -229,7 +187,6 @@ class YOLOEvaluator(BaseEvaluator):
             "inference_ms": "Inference (ms)",
             "total_per_image_ms": "Total (ms/img)",
             "model_params": "Parameters",
-            "model_gflops": "GFLOPs",
             "model_size_mb": "Size (MB)",
             "weights_path": "Weights",
         }
@@ -250,20 +207,6 @@ class YOLOEvaluator(BaseEvaluator):
     def evaluate(
         self, weights_path: str | Path | None = None, **kwargs
     ) -> dict[str, Any]:
-        """
-        Run full evaluation pipeline.
-
-        Steps:
-          1. Resolve trained weights path.
-          2. Load the trained model.
-          3. Run validation on the test split.
-          4. Extract all metrics.
-          5. Save results to the experiments directory.
-          6. Return the metrics dict.
-
-        Returns:
-            Dict with all evaluation metrics.
-        """
         run_id = self._config.run_id
         print(f"\n{'='*60}")
         print(f"  Evaluating: {run_id}")
@@ -282,12 +225,11 @@ class YOLOEvaluator(BaseEvaluator):
         val_results = self._model.val(**kwargs)
 
         print(f"  Extracting metrics ...")
-        trained_model = self._model.model.model if hasattr(self._model.model, "model") else self._model.model
+        trained_model = getattr(self._model.model, "model", self._model.model)
         metrics = self._extract_metrics(val_results, trained_model=trained_model)
 
         self._save_results(weights, metrics)
 
-        # Print summary
         print(f"\n  Metrics for {run_id}:")
         print(f"    mAP50:    {metrics.get('map50', 'N/A')}")
         print(f"    mAP50-95: {metrics.get('map50_95', 'N/A')}")
@@ -296,7 +238,6 @@ class YOLOEvaluator(BaseEvaluator):
         print(f"    F1:       {metrics.get('f1_score', 'N/A')}")
         print(f"    Speed:    {metrics.get('inference_ms', 'N/A')} ms/img")
         print(f"    Params:   {metrics.get('model_params', 'N/A')}")
-        print(f"    GFLOPs:   {metrics.get('model_gflops', 'N/A')}")
         print(f"    Size:     {metrics.get('model_size_mb', 'N/A')} MB")
         print()
 

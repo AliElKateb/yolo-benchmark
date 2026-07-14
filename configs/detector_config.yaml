@@ -880,7 +880,6 @@ runs:
     enabled: false
 
 evaluation:
-  output_dir: "./outputs/detection_experiments"
   split: "test"                   # "val" or "test"
   batch: 4
   conf_thres: 0.25
