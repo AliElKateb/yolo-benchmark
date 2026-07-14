@@ -3,11 +3,25 @@ from pathlib import Path
 from typing import Optional
 
 
+REQUIRED_RUN_KEYS = ["run_id", "model"]
+REQUIRED_MODEL_KEYS = ["family", "variant"]
+
+
 class DetectorConfig:
     def __init__(self, config_path: str | Path):
         with open(config_path) as f:
             self._data = yaml.safe_load(f)
-        self._runs = [RunConfig(r, parent=self) for r in self._data.get("runs", [])]
+        runs_data = self._data.get("runs", [])
+        for i, r in enumerate(runs_data):
+            run_id = r.get("run_id", f"run_{i}")
+            for key in REQUIRED_RUN_KEYS:
+                if key not in r:
+                    raise ValueError(f"Run #{i} (run_id='{run_id}'): missing required field '{key}'")
+            model = r.get("model", {})
+            for key in REQUIRED_MODEL_KEYS:
+                if key not in model:
+                    raise ValueError(f"Run '{run_id}': model section missing required field '{key}'")
+        self._runs = [RunConfig(r, parent=self) for r in runs_data]
 
     @property
     def runs(self) -> list["RunConfig"]:
@@ -31,7 +45,6 @@ class DetectorConfig:
 
     @property
     def global_config(self) -> dict:
-        """Top-level settings (evaluation, etc.), exposed publicly."""
         return {k: v for k, v in self._data.items() if k != "runs"}
 
 
@@ -86,7 +99,6 @@ class RunConfig:
 
     @property
     def global_config(self) -> dict:
-        """Access top-level config sections (evaluation, etc.)."""
         return self._parent.global_config if self._parent else {}
 
     def get(self, key: str, default=None):

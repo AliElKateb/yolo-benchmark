@@ -4,26 +4,23 @@ Entry point for the YOLO benchmarking pipeline.
 Supports training and evaluation modes. In training mode, it loads
 the config and trains all enabled runs. In evaluation mode, it loads
 trained weights and benchmarks each model, saving results to
-outputs/detection_experiments/.
+outputs/detection/.
 
 Usage:
-    python main.py --train                          # train all enabled runs
-    python main.py --train --run yolov8_nano        # train a single run
-    python main.py --train --epochs 10              # override epochs
-
-    python main.py --evaluate                       # evaluate all trained runs
-    python main.py --evaluate --run yolov8_nano     # evaluate a single run
-
-    python main.py --train --evaluate               # train then evaluate
+    python main.py --train --name exp_001                        # train all enabled runs
+    python main.py --train --run yolov8_nano --name exp_001      # train a single run
+    python main.py --train --epochs 10 --name exp_001            # override epochs
+    python main.py --evaluate --name exp_001                     # evaluate all trained runs
+    python main.py --evaluate --run yolov8_nano --name exp_001   # evaluate a single run
+    python main.py --train --evaluate --name exp_001             # train then evaluate
 """
 
 import os
+import re
 import argparse
 import sys
+from pathlib import Path
 
-# MPS compatibility: prevent "zeros: Dimension size must be non-negative" crashes
-# on Apple Silicon. HIGH_WATERMARK_RATIO avoids memory fragmentation, and
-# ENABLE_MPS_FALLBACK allows unsupported ops to fall back to CPU gracefully.
 os.environ.setdefault("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 
@@ -34,33 +31,13 @@ from evaluation import create_evaluator
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="YOLO benchmarking pipeline")
 
-    parser.add_argument(
-        "--train",
-        action="store_true",
-        default=False,
-        help="Run training for enabled models",
-    )
-    parser.add_argument(
-        "--evaluate",
-        action="store_true",
-        default=False,
-        help="Run evaluation on trained models",
-    )
-    parser.add_argument(
-        "--run",
-        type=str,
-        default=None,
-        help="Target a specific run_id (e.g. 'yolov8_nano')",
-    )
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default=None,
-        help="Override number of epochs for all runs",
-    )
+    parser.add_argument("--train", action="store_true", default=False, help="Run training for enabled models")
+    parser.add_argument("--evaluate", action="store_true", default=False, help="Run evaluation on trained models")
+    parser.add_argument("--run", type=str, default=None, help="Target a specific run_id (e.g. 'yolov8_nano')")
+    parser.add_argument("--epochs", type=int, default=None, help="Override number of epochs for all runs")
+    parser.add_argument("--name", type=str, default=None, help="Experiment folder name (auto-generated if omitted)")
 
     args = parser.parse_args()
     if not args.train and not args.evaluate:
@@ -71,10 +48,23 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def run_training(cfg, args) -> dict:
-    """Train all enabled (or targeted) runs and return results."""
+def resolve_experiment_name(name: str | None) -> str:
+    if name:
+        return name
+    base = Path("outputs/detection")
+    base.mkdir(parents=True, exist_ok=True)
+    max_num = 0
+    for d in base.iterdir():
+        if d.is_dir() and d.name.startswith("experiment_"):
+            m = re.fullmatch(r"experiment_(\d+)", d.name)
+            if m:
+                max_num = max(max_num, int(m.group(1)))
+    return f"experiment_{max_num + 1:03d}"
+
+
+def run_training(cfg, args, exp_name: str) -> dict:
     runs = _resolve_runs(cfg, args)
-    print(f"\n  Loaded config with {len(runs)} run(s) to train.\n")
+    print(f"  Loaded config with {len(runs)} run(s) to train.\n")
 
     results = {}
     for run in runs:
@@ -82,7 +72,11 @@ def run_training(cfg, args) -> dict:
             model = create_model(run)
             trainer = create_trainer(model, run)
 
-            override_kwargs = {}
+            override_kwargs = {
+                "project": f"outputs/detection/{exp_name}",
+                "name": run.run_id,
+                "exist_ok": True,
+            }
             if args.epochs is not None:
                 override_kwargs["epochs"] = args.epochs
 
@@ -96,16 +90,15 @@ def run_training(cfg, args) -> dict:
     return results
 
 
-def run_evaluation(cfg, args) -> dict:
-    """Evaluate all trained (or targeted) runs and return metrics."""
+def run_evaluation(cfg, args, exp_name: str) -> dict:
     runs = _resolve_runs(cfg, args)
-    print(f"\n  Loaded config with {len(runs)} run(s) to evaluate.\n")
+    print(f"  Loaded config with {len(runs)} run(s) to evaluate.\n")
 
     metrics = {}
     for run in runs:
         try:
             model = create_model(run)
-            evaluator = create_evaluator(model, run)
+            evaluator = create_evaluator(model, run, experiment_name=exp_name)
 
             result = evaluator.evaluate()
             metrics[run.run_id] = result
@@ -118,7 +111,6 @@ def run_evaluation(cfg, args) -> dict:
 
 
 def _resolve_runs(cfg, args):
-    """Get the list of runs to process based on CLI args."""
     if args.run:
         run = cfg.get_run(args.run)
         if run is None:
@@ -129,7 +121,6 @@ def _resolve_runs(cfg, args):
 
 
 def print_summary(results: dict, phase: str):
-    """Print a clean summary of training/evaluation results."""
     print(f"\n{'='*60}")
     print(f"  {phase} Summary")
     print(f"{'='*60}")
@@ -144,12 +135,15 @@ def main():
     args = parse_args()
     cfg = load_config()
 
+    exp_name = resolve_experiment_name(args.name)
+    print(f"\n  Experiment: {exp_name}")
+
     if args.train:
-        train_results = run_training(cfg, args)
+        train_results = run_training(cfg, args, exp_name)
         print_summary(train_results, "Training")
 
     if args.evaluate:
-        eval_results = run_evaluation(cfg, args)
+        eval_results = run_evaluation(cfg, args, exp_name)
         print_summary(eval_results, "Evaluation")
 
 
