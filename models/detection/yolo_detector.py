@@ -12,6 +12,7 @@ from ultralytics import YOLO
 
 from configs.config_loader import RunConfig
 from models.base_model import BaseModel
+from training.tiny_train import TinyTrain
 
 
 class YOLODetector(BaseModel):
@@ -108,7 +109,21 @@ class YOLODetector(BaseModel):
             })
 
         args.update(override_kwargs)
+
+        tt_config = self._config.global_config.get("tiny_train", {})
+        if tt_config.get("enabled", False):
+            tt = TinyTrain(self._model, tt_config)
+            tt.apply(
+                data_yaml=data_yaml,
+                device=str(args.get("device", "cpu")),
+                imgsz=self._config.inference.get("imgsz", 640),
+            )
+
         results = self._model.train(**args)
+
+        if tt_config.get("enabled", False):
+            tt.remove_hooks()
+
         return results
 
     def predict(self, source: str | Path | list[str], **kwargs) -> Any:

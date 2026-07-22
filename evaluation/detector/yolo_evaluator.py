@@ -8,6 +8,7 @@ and saves results under outputs/detection/<experiment_name>/<run_id>/.
 
 import csv
 import json
+import shutil
 import time
 from pathlib import Path
 from typing import Any
@@ -48,6 +49,7 @@ class YOLOEvaluator(BaseEvaluator):
 
         if self._experiment_name:
             candidate_projects.append(f"outputs/detection/{self._experiment_name}")
+            candidate_projects.append(f"runs/detect/outputs/detection/{self._experiment_name}")
 
         candidate_projects.extend([
             "runs/detect",
@@ -154,15 +156,41 @@ class YOLOEvaluator(BaseEvaluator):
     def _get_model_file_size(self, weights_path: Path) -> float:
         return round(weights_path.stat().st_size / (1024 * 1024), 2)
 
+    def _copy_training_artifacts(self, weights_path: Path):
+        train_out = weights_path.parent.parent
+        if not train_out.exists():
+            return
+        if train_out.resolve() == self._run_dir.resolve():
+            return
+
+        weights_dest = self._run_dir / "weights"
+        weights_dest.mkdir(parents=True, exist_ok=True)
+        for f in train_out.glob("weights/*"):
+            shutil.copy2(f, weights_dest / f.name)
+
+        for item in train_out.iterdir():
+            if item.name == "weights":
+                continue
+            dest = self._run_dir / item.name
+            if item.is_dir():
+                shutil.copytree(item, dest, dirs_exist_ok=True)
+            else:
+                shutil.copy2(item, dest)
+
     def _save_results(self, weights_path: Path, metrics: dict[str, Any]):
         if self._run_dir is None:
             return
 
+        self._copy_training_artifacts(weights_path)
+
+        local_weights = self._run_dir / "weights" / weights_path.name
+        local_weights_path = local_weights if local_weights.exists() else weights_path
+
         metrics["run_id"] = self._config.run_id
         metrics["family"] = self._config.family
         metrics["variant"] = self._config.variant
-        metrics["weights_path"] = str(weights_path)
-        metrics["model_size_mb"] = self._get_model_file_size(weights_path)
+        metrics["weights_path"] = str(local_weights_path)
+        metrics["model_size_mb"] = self._get_model_file_size(local_weights_path)
         metrics["dataset"] = self._config.dataset.get("data_yaml", "")
 
         json_path = self._run_dir / "metrics.json"
@@ -191,16 +219,24 @@ class YOLOEvaluator(BaseEvaluator):
             "weights_path": "Weights",
         }
 
-        file_exists = csv_path.exists()
-        with open(csv_path, "a", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=list(field_map.values()))
-            if not file_exists:
-                writer.writeheader()
+        new_row = {}
+        for key, label in field_map.items():
+            new_row[label] = metrics.get(key, "")
 
-            row = {}
-            for key, label in field_map.items():
-                row[label] = metrics.get(key, "")
-            writer.writerow(row)
+        existing = []
+        if csv_path.exists():
+            with open(csv_path) as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row[field_map["run_id"]] != metrics.get("run_id", ""):
+                        existing.append(row)
+
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=list(field_map.values()))
+            writer.writeheader()
+            for row in existing:
+                writer.writerow(row)
+            writer.writerow(new_row)
 
         print(f"  Comparison CSV updated: {csv_path}")
 
