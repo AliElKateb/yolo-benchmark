@@ -7,12 +7,12 @@ trained weights and benchmarks each model, saving results to
 outputs/detection/.
 
 Usage:
-    python main.py --train --name exp_001                        # train all enabled runs
-    python main.py --train --run yolov8_nano --name exp_001      # train a single run
-    python main.py --train --epochs 10 --name exp_001            # override epochs
-    python main.py --evaluate --name exp_001                     # evaluate all trained runs
-    python main.py --evaluate --run yolov8_nano --name exp_001   # evaluate a single run
-    python main.py --train --evaluate --name exp_001             # train then evaluate
+    python main.py --train --name exp_001                          # train all enabled runs
+    python main.py --train --run yolov8_nano --name exp_001        # train a single run
+    python main.py --train --epochs 10 --device mps --name exp_001 # override epochs + device
+    python main.py --evaluate --name exp_001                       # evaluate all trained runs
+    python main.py --evaluate --run yolov8_nano --name exp_001     # evaluate a single run
+    python main.py --train --evaluate --name exp_001               # train then evaluate
 """
 
 import os
@@ -24,10 +24,21 @@ from pathlib import Path
 os.environ.setdefault("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 
+import torch
+
 from configs.config_loader import load_config
 from models import create_model
 from training import create_trainer
 from evaluation import create_evaluator
+from evaluation.visualize import generate_all_plots
+
+
+def detect_device() -> str:
+    if torch.cuda.is_available():
+        return "cuda:0"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
 
 
 def parse_args() -> argparse.Namespace:
@@ -37,6 +48,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--evaluate", action="store_true", default=False, help="Run evaluation on trained models")
     parser.add_argument("--run", type=str, default=None, help="Target a specific run_id (e.g. 'yolov8_nano')")
     parser.add_argument("--epochs", type=int, default=None, help="Override number of epochs for all runs")
+    parser.add_argument("--device", type=str, default=None, help="Override device for all runs (e.g. 'cpu', 'mps', 'cuda:0')")
     parser.add_argument("--name", type=str, default=None, help="Experiment folder name (auto-generated if omitted)")
 
     args = parser.parse_args()
@@ -79,6 +91,8 @@ def run_training(cfg, args, exp_name: str) -> dict:
             }
             if args.epochs is not None:
                 override_kwargs["epochs"] = args.epochs
+            if args.device is not None:
+                override_kwargs["device"] = args.device
 
             result = trainer.train(**override_kwargs)
             results[run.run_id] = result
@@ -100,7 +114,10 @@ def run_evaluation(cfg, args, exp_name: str) -> dict:
             model = create_model(run)
             evaluator = create_evaluator(model, run, experiment_name=exp_name)
 
-            result = evaluator.evaluate()
+            eval_kwargs = {}
+            if args.device is not None:
+                eval_kwargs["device"] = args.device
+            result = evaluator.evaluate(**eval_kwargs)
             metrics[run.run_id] = result
 
         except Exception as e:
@@ -135,8 +152,12 @@ def main():
     args = parse_args()
     cfg = load_config()
 
+    if args.device is None:
+        args.device = detect_device()
+    print(f"  Device: {args.device}")
+
     exp_name = resolve_experiment_name(args.name)
-    print(f"\n  Experiment: {exp_name}")
+    print(f"  Experiment: {exp_name}")
 
     if args.train:
         train_results = run_training(cfg, args, exp_name)
@@ -144,6 +165,8 @@ def main():
 
     if args.evaluate:
         eval_results = run_evaluation(cfg, args, exp_name)
+        csv_path = Path(f"outputs/detection/{exp_name}/comparison.csv")
+        generate_all_plots(csv_path, Path(f"outputs/detection/{exp_name}"))
         print_summary(eval_results, "Evaluation")
 
 

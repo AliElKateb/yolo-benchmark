@@ -74,7 +74,7 @@ runs:
       description: "YOLOv5 Nano — fastest and lightest variant"
       tags: ["yolov5", "nano", "baseline"]
       notes: ""
-    enabled: true
+    enabled: false
 
   - run_id: "yolov5_small"
     model:
@@ -151,7 +151,7 @@ runs:
       description: "YOLOv5 Small — balanced speed and accuracy"
       tags: ["yolov5", "small", "baseline"]
       notes: ""
-    enabled: true
+    enabled: false
 
   - run_id: "yolov5_medium"
     model:
@@ -457,7 +457,7 @@ runs:
       description: "YOLOv8 Nano — fastest and lightest variant"
       tags: ["yolov8", "nano", "baseline"]
       notes: ""
-    enabled: true
+    enabled: false
 
   - run_id: "yolov8_small"
     model:
@@ -532,7 +532,7 @@ runs:
       description: "YOLOv8 Small — balanced speed and accuracy"
       tags: ["yolov8", "small", "baseline"]
       notes: ""
-    enabled: true
+    enabled: false
 
   - run_id: "yolov8_medium"
     model:
@@ -778,7 +778,7 @@ runs:
        translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
        flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
     training:
-      {epochs: 5, batch: 4, workers: 2, device: "mps", seed: 42,
+      {epochs: 3, batch: 4, workers: 2, device: "mps", seed: 42,
        early_stopping: {patience: 10, enabled: true},
        resume: false, pretrained: true, amp: true, deterministic: true,
        single_cls: false, image_weights: false, multi_scale: false,
@@ -807,7 +807,7 @@ runs:
        translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
        flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
     training:
-      {epochs: 5, batch: 4, workers: 2, device: "mps", seed: 42,
+      {epochs: 3, batch: 4, workers: 2, device: "mps", seed: 42,
        early_stopping: {patience: 5, enabled: true},
        resume: false, pretrained: true, amp: true, deterministic: true,
        single_cls: false, image_weights: false, multi_scale: false,
@@ -835,7 +835,7 @@ runs:
        translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
        flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
     training:
-      {epochs: 5, batch: 4, workers: 2, device: "mps", seed: 42,
+      {epochs: 3, batch: 4, workers: 2, device: "mps", seed: 42,
        early_stopping: {patience: 5, enabled: true},
        resume: false, pretrained: true, amp: true, deterministic: true,
        single_cls: false, image_weights: false, multi_scale: false,
@@ -864,7 +864,7 @@ runs:
        translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
        flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
     training:
-      {epochs: 5, batch: 4, workers: 2, device: "mps", seed: 42,
+      {epochs: 3, batch: 4, workers: 2, device: "mps", seed: 42,
        early_stopping: {patience: 5, enabled: true},
        resume: false, pretrained: true, amp: true, deterministic: true,
        single_cls: false, image_weights: false, multi_scale: false,
@@ -878,38 +878,77 @@ runs:
       {description: "YOLOv8 Small on Mechanical tools-10000",
        tags: ["yolov8", "small", "mechanical"], notes: ""}
     enabled: false
+  - run_id: "mech_yolov5_medium"
+    model: {family: "yolov5", variant: "m", task: "detect"}
+    dataset:
+      data_yaml: "./dataset/mechanical_tools/data.yaml"
+      nc: 5
+      names: ["drill", "hammer", "pliers", "screwdriver", "wrench"]
+    hyperparameters:
+      {lr: 0.01, lrf: 0.01, momentum: 0.937, weight_decay: 0.0005,
+       warmup_epochs: 3.0, warmup_momentum: 0.8, warmup_bias_lr: 0.1,
+       box: 0.05, cls: 0.5, cls_pw: 1.0, obj: 1.0, obj_pw: 1.0,
+       iou_t: 0.20, anchor_t: 4.0, fl_gamma: 0.0,
+       hsv_h: 0.015, hsv_s: 0.7, hsv_v: 0.4, degrees: 0.0,
+       translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
+       flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
+    training:
+      {epochs: 3, batch: 4, workers: 2, device: "mps", seed: 42,
+       early_stopping: {patience: 5, enabled: true},
+       resume: false, pretrained: true, amp: true, deterministic: true,
+       single_cls: false, image_weights: false, multi_scale: false,
+       save_period: -1, exist_ok: false, project: "runs", name: "mech_yolov5_medium",
+       optimizer: "SGD", cos_lr: false, label_smoothing: 0.0, freeze: 0, cache: false}
+    inference:
+      {imgsz: [416, 416], conf_thres: 0.25, iou_thres: 0.45,
+       max_det: 300, half: false, augment: false, visualize: false}
+    metadata:
+      {description: "YOLOv5 Medium on Mechanical tools-10000",
+       tags: ["yolov5", "medium", "mechanical"], notes: ""}
+    enabled: true
+
+  - run_id: "mech_yolov8_medium"
+    model: {family: "yolov8", variant: "m", task: "detect"}
+    dataset:
+      data_yaml: "./dataset/mechanical_tools/data.yaml"
+      nc: 5
+      names: ["drill", "hammer", "pliers", "screwdriver", "wrench"]
+    hyperparameters:
+      {lr: 0.01, lrf: 0.01, momentum: 0.937, weight_decay: 0.0005,
+       warmup_epochs: 3.0, warmup_momentum: 0.8, warmup_bias_lr: 0.1,
+       box: 7.5, cls: 0.5, dfl: 1.5,
+       hsv_h: 0.015, hsv_s: 0.7, hsv_v: 0.4, degrees: 0.0,
+       translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
+       flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
+    training:
+      {epochs: 3, batch: 4, workers: 2, device: "mps", seed: 42,
+       early_stopping: {patience: 5, enabled: true},
+       resume: false, pretrained: true, amp: true, deterministic: true,
+       single_cls: false, image_weights: false, multi_scale: false,
+       save_period: -1, exist_ok: false, project: "runs", name: "mech_yolov8_medium",
+       optimizer: "AdamW", cos_lr: false, label_smoothing: 0.0, freeze: 0, cache: false,
+       overlap_mask: true, mask_ratio: 4, dropout: 0.0}
+    inference:
+      {imgsz: [416, 416], conf_thres: 0.25, iou_thres: 0.45,
+       max_det: 300, half: false, augment: false, visualize: false}
+    metadata:
+      {description: "YOLOv8 Medium on Mechanical tools-10000",
+       tags: ["yolov8", "medium", "mechanical"], notes: ""}
+    enabled: true
 
 evaluation:
   split: "test"                   # "val" or "test"
   batch: 4
-  conf_thres: 0.25
+  conf_thres: 0.001               # must match ultralytics validator default (0.001) for proper mAP
   iou_thres: 0.45
   half: false
   device: "mps"
 
 # ============================================================
-# TinyTrain — Selective Retraining (Frozen for this step)
+# TinyTrain — Selective Filter Freezing
 # ============================================================
-# Uncomment and configure when ready for TinyTrain usage.
-#
-# tiny_train:
-#   enabled: false
-#   fisher:
-#     samples: 256
-#     batch_size: 32
-#     score_layers: ["conv", "c2f", "bottleneck"]
-#     normalize: true
-#   freeze:
-#     strategy: "threshold"       # "threshold" | "percentile" | "top_k"
-#     threshold: 0.01
-#     percentile: 50
-#     top_k: 100
-#   fine_tune:
-#     epochs: 20
-#     lr: 0.001
-#     lrf: 0.01
-#     freeze_bn: true
-#     optimizer: "AdamW"
-#   debug:
-#     plot_importance: false
-#     save_scores: false
+tiny_train:
+  enabled: true
+  imp_samples: 256
+  imp_batch_size: 6
+  freeze_portion: 0.5
