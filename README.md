@@ -160,11 +160,12 @@ outputs/detection/<experiment>/
 ### 1. Clone the vendored engines
 
 The pipeline runs against local clones of the YOLO codebases (not PyPI releases), so clone
-them first:
+them first. These are **forks** with the TinyTrain modifications applied on the `tinytrain`
+branch:
 
 ```bash
-git clone https://github.com/ultralytics/yolov5.git yolov5
-git clone https://github.com/ultralytics/ultralytics.git ultralytics_repo
+git clone -b tinytrain https://github.com/AliElKateb/yolov5.git yolov5
+git clone -b tinytrain https://github.com/AliElKateb/ultralytics.git ultralytics_repo
 ```
 
 ### 2. Create the environment
