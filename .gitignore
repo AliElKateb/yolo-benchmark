@@ -12,3 +12,5 @@ runs/
 outputs/
 dataset/
 .DS_Store
+yolov5/
+ultralytics_repo/
