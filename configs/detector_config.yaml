@@ -905,7 +905,7 @@ runs:
     metadata:
       {description: "YOLOv5 Medium on Mechanical tools-10000",
        tags: ["yolov5", "medium", "mechanical"], notes: ""}
-    enabled: true
+    enabled: false
 
   - run_id: "mech_yolov8_medium"
     model: {family: "yolov8", variant: "m", task: "detect"}
@@ -934,6 +934,129 @@ runs:
     metadata:
       {description: "YOLOv8 Medium on Mechanical tools-10000",
        tags: ["yolov8", "medium", "mechanical"], notes: ""}
+    enabled: false
+
+  # ──────────────────────────────────────────────
+  # Mechanical Tools TinyTrain comparison (5 classes, small variants)
+  # ──────────────────────────────────────────────
+  - run_id: "mech_yolov5_small_baseline"
+    model: {family: "yolov5", variant: "s", task: "detect"}
+    dataset:
+      data_yaml: "./dataset/mechanical_tools/data.yaml"
+      nc: 5
+      names: ["drill", "hammer", "pliers", "screwdriver", "wrench"]
+    hyperparameters:
+      {lr: 0.01, lrf: 0.01, momentum: 0.937, weight_decay: 0.0005,
+       warmup_epochs: 3.0, warmup_momentum: 0.8, warmup_bias_lr: 0.1,
+       box: 0.05, cls: 0.5, cls_pw: 1.0, obj: 1.0, obj_pw: 1.0,
+       iou_t: 0.20, anchor_t: 4.0, fl_gamma: 0.0,
+       hsv_h: 0.015, hsv_s: 0.7, hsv_v: 0.4, degrees: 0.0,
+       translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
+       flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
+    training:
+      {epochs: 15, batch: 4, workers: 2, device: "mps", seed: 42,
+       early_stopping: {patience: 10, enabled: false},
+       resume: false, pretrained: true, amp: true, deterministic: true,
+       single_cls: false, image_weights: false, multi_scale: false,
+       save_period: -1, exist_ok: false, project: "runs", name: "mech_yolov5_small_baseline",
+       optimizer: "SGD", cos_lr: false, label_smoothing: 0.0, freeze: 0, cache: false}
+    inference:
+      {imgsz: [416, 416], conf_thres: 0.25, iou_thres: 0.45,
+       max_det: 300, half: false, augment: false, visualize: false}
+    tiny_train: {enabled: false}
+    metadata:
+      {description: "YOLOv5 Small on Mechanical tools — baseline (no TinyTrain)",
+       tags: ["yolov5", "small", "mechanical", "baseline", "tinytrain"], notes: ""}
+    enabled: true
+
+  - run_id: "mech_yolov5_small_tinytrain"
+    model: {family: "yolov5", variant: "s", task: "detect"}
+    dataset:
+      data_yaml: "./dataset/mechanical_tools/data.yaml"
+      nc: 5
+      names: ["drill", "hammer", "pliers", "screwdriver", "wrench"]
+    hyperparameters:
+      {lr: 0.01, lrf: 0.01, momentum: 0.937, weight_decay: 0.0005,
+       warmup_epochs: 3.0, warmup_momentum: 0.8, warmup_bias_lr: 0.1,
+       box: 0.05, cls: 0.5, cls_pw: 1.0, obj: 1.0, obj_pw: 1.0,
+       iou_t: 0.20, anchor_t: 4.0, fl_gamma: 0.0,
+       hsv_h: 0.015, hsv_s: 0.7, hsv_v: 0.4, degrees: 0.0,
+       translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
+       flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
+    training:
+      {epochs: 15, batch: 4, workers: 2, device: "mps", seed: 42,
+       early_stopping: {patience: 10, enabled: false},
+       resume: false, pretrained: true, amp: true, deterministic: true,
+       single_cls: false, image_weights: false, multi_scale: false,
+       save_period: -1, exist_ok: false, project: "runs", name: "mech_yolov5_small_tinytrain",
+       optimizer: "SGD", cos_lr: false, label_smoothing: 0.0, freeze: 0, cache: false}
+    inference:
+      {imgsz: [416, 416], conf_thres: 0.25, iou_thres: 0.45,
+       max_det: 300, half: false, augment: false, visualize: false}
+    # inherits global tiny_train.enabled: true
+    metadata:
+      {description: "YOLOv5 Small on Mechanical tools — with TinyTrain 50% freeze",
+       tags: ["yolov5", "small", "mechanical", "tinytrain"], notes: ""}
+    enabled: true
+
+  - run_id: "mech_yolov8_small_baseline"
+    model: {family: "yolov8", variant: "s", task: "detect"}
+    dataset:
+      data_yaml: "./dataset/mechanical_tools/data.yaml"
+      nc: 5
+      names: ["drill", "hammer", "pliers", "screwdriver", "wrench"]
+    hyperparameters:
+      {lr: 0.01, lrf: 0.01, momentum: 0.937, weight_decay: 0.0005,
+       warmup_epochs: 3.0, warmup_momentum: 0.8, warmup_bias_lr: 0.1,
+       box: 7.5, cls: 0.5, dfl: 1.5,
+       hsv_h: 0.015, hsv_s: 0.7, hsv_v: 0.4, degrees: 0.0,
+       translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
+       flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
+    training:
+      {epochs: 15, batch: 4, workers: 2, device: "mps", seed: 42,
+       early_stopping: {patience: 10, enabled: false},
+       resume: false, pretrained: true, amp: true, deterministic: true,
+       single_cls: false, image_weights: false, multi_scale: false,
+       save_period: -1, exist_ok: false, project: "runs", name: "mech_yolov8_small_baseline",
+       optimizer: "AdamW", cos_lr: false, label_smoothing: 0.0, freeze: 0, cache: false,
+       overlap_mask: true, mask_ratio: 4, dropout: 0.0}
+    inference:
+      {imgsz: [416, 416], conf_thres: 0.25, iou_thres: 0.45,
+       max_det: 300, half: false, augment: false, visualize: false}
+    tiny_train: {enabled: false}
+    metadata:
+      {description: "YOLOv8 Small on Mechanical tools — baseline (no TinyTrain)",
+       tags: ["yolov8", "small", "mechanical", "baseline", "tinytrain"], notes: ""}
+    enabled: true
+
+  - run_id: "mech_yolov8_small_tinytrain"
+    model: {family: "yolov8", variant: "s", task: "detect"}
+    dataset:
+      data_yaml: "./dataset/mechanical_tools/data.yaml"
+      nc: 5
+      names: ["drill", "hammer", "pliers", "screwdriver", "wrench"]
+    hyperparameters:
+      {lr: 0.01, lrf: 0.01, momentum: 0.937, weight_decay: 0.0005,
+       warmup_epochs: 3.0, warmup_momentum: 0.8, warmup_bias_lr: 0.1,
+       box: 7.5, cls: 0.5, dfl: 1.5,
+       hsv_h: 0.015, hsv_s: 0.7, hsv_v: 0.4, degrees: 0.0,
+       translate: 0.1, scale: 0.5, shear: 0.0, perspective: 0.0,
+       flipud: 0.0, fliplr: 0.5, mosaic: 1.0, mixup: 0.0, copy_paste: 0.0}
+    training:
+      {epochs: 15, batch: 4, workers: 2, device: "mps", seed: 42,
+       early_stopping: {patience: 10, enabled: false},
+       resume: false, pretrained: true, amp: true, deterministic: true,
+       single_cls: false, image_weights: false, multi_scale: false,
+       save_period: -1, exist_ok: false, project: "runs", name: "mech_yolov8_small_tinytrain",
+       optimizer: "AdamW", cos_lr: false, label_smoothing: 0.0, freeze: 0, cache: false,
+       overlap_mask: true, mask_ratio: 4, dropout: 0.0}
+    inference:
+      {imgsz: [416, 416], conf_thres: 0.25, iou_thres: 0.45,
+       max_det: 300, half: false, augment: false, visualize: false}
+    # inherits global tiny_train.enabled: true
+    metadata:
+      {description: "YOLOv8 Small on Mechanical tools — with TinyTrain 50% freeze",
+       tags: ["yolov8", "small", "mechanical", "tinytrain"], notes: ""}
     enabled: true
 
 evaluation:
@@ -951,4 +1074,4 @@ tiny_train:
   enabled: true
   imp_samples: 256
   imp_batch_size: 6
-  freeze_portion: 0.5
+  freeze_portion: 0.7

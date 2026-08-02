@@ -1,11 +1,3 @@
-"""
-TinyTrain: Selective filter freezing for efficient fine-tuning.
-
-Adapted from the TinyTrain framework for ultralytics YOLOv5/v8.
-Estimates filter importance via Fisher information, then selectively
-freezes the least important conv filters so only the critical ~10% train.
-"""
-
 import copy
 from pathlib import Path
 from typing import Any
@@ -16,6 +8,9 @@ import torch.nn as nn
 import yaml
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image
+from pipeline_utils.logging_utils import get_logger
+
+_log = get_logger("pipeline")
 
 
 def _get_conv_weight_names(model) -> list[str]:
@@ -102,7 +97,8 @@ def _get_layers_filters_to_freeze(sorted_si_metric, ordered_layerwise, freeze_po
         if layer_name in ordered_layerwise:
             filters = ordered_layerwise[layer_name]
             num_freeze = int(freeze_portion * len(filters))
-            filters_to_freeze[layer_name] = filters[:num_freeze]
+            if num_freeze > 0:
+                filters_to_freeze[layer_name] = filters[:num_freeze]
     return filters_to_freeze
 
 
@@ -110,12 +106,15 @@ def _encode_layer_name(name):
     return name.replace(".", "_")
 
 
-def _dict_to_nested_list(encoded_dict):
-    nested_list = []
-    for layer_name, filters in encoded_dict.items():
+def _build_freeze_nested_list(filters_dict):
+    nested = []
+    for layer_name, filters in filters_dict.items():
         filters_list = filters.tolist() if hasattr(filters, "tolist") else list(filters)
-        nested_list.append([layer_name] + filters_list)
-    return nested_list
+        if not filters_list:
+            continue
+        encoded = _encode_layer_name(layer_name)
+        nested.append([encoded] + filters_list)
+    return nested
 
 
 class _SimpleImageDataset(Dataset):
@@ -135,41 +134,50 @@ class _SimpleImageDataset(Dataset):
         return torch.from_numpy(arr)
 
 
-def _make_freeze_hook(frozen_indices):
-    def hook(grad):
-        grad_copy = grad.clone()
-        grad_copy[frozen_indices] = 0
-        return grad_copy
-    return hook
-
-
 class TinyTrain:
     """
-    TinyTrain selective filter freezing for ultralytics YOLO models.
+    TinyTrain selective filter freezing.
+
+    Computes Fisher importance, selects least-important filters,
+    and returns a nested-list freeze argument for yolov5.train.run()
+    or ultralytics trainer.
 
     Usage:
-        tt = TinyTrain(yolo_model, config)
-        tt.apply(data_yaml, device)
-        # ... call model.train() as normal ...
-        tt.remove_hooks()
+        tt = TinyTrain(config)
+        freeze_list = tt.apply(variant="s", data_yaml="...", device="cpu")
+        # pass freeze_list as freeze= to train.run()
     """
 
-    def __init__(self, model, config: dict | None = None):
-        self.model = model
+    def __init__(self, config: dict | None = None):
         self.config = config or {}
-        self.hooks = []
 
-    def apply(self, data_yaml: str, device: str = "cpu", imgsz: int | list = 640):
+    def apply(
+        self,
+        variant: str,
+        data_yaml: str,
+        device: str = "cpu",
+        imgsz: int | list = 640,
+        family: str = "yolov5",
+    ) -> list:
         if isinstance(imgsz, (list, tuple)):
             imgsz = imgsz[0]
-        print("  [TinyTrain] Estimating filter importance ...")
-        detection_model = self.model
+
+        if isinstance(device, str) and device.isdigit():
+            device = f"cuda:{device}"
+
+        _log.info("TinyTrain: Loading %s for importance estimation", f"{family}{variant}.pt")
+        from ultralytics import YOLO
+        model_path = f"{family}{variant}.pt"
+        model = YOLO(model_path)
+        detection_model = model.model
+
         model_copy = copy.deepcopy(detection_model)
         model_copy.train()
         for p in model_copy.parameters():
             p.requires_grad_(True)
         model_copy.to(device)
 
+        _log.info("TinyTrain: Estimating filter importance ...")
         data_yaml_path = Path(data_yaml)
         with open(data_yaml_path) as f:
             data_cfg = yaml.safe_load(f)
@@ -188,7 +196,7 @@ class TinyTrain:
         dataset = _SimpleImageDataset(train_path, imgsz)
         if len(dataset) == 0:
             print("  [TinyTrain] WARNING: no training images found for importance estimation!")
-            return
+            return []
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 
         base_params = [p for p in model_copy.parameters() if p.requires_grad]
@@ -226,7 +234,7 @@ class TinyTrain:
             imp = (p_2d * g_2d).sum(dim=1).pow(2).cpu().numpy()
             list_imp_yolo.append(imp)
 
-        print(f"  [TinyTrain] Building multi-objective metric ...")
+        print("  [TinyTrain] Building multi-objective metric ...")
         conv_weight_names = _get_conv_weight_names(model_copy)
         conv_importance_weight = []
         for ind, name in enumerate(layer_names):
@@ -248,35 +256,16 @@ class TinyTrain:
         )
 
         total_filters = sum(len(v) for v in layers_filters_to_freeze.values())
-        print(f"  [TinyTrain] Freezing {total_filters} filters across "
-              f"{len(layers_filters_to_freeze)} layers "
-              f"({freeze_portion * 100:.0f}% freeze ratio)")
+        _log.info("TinyTrain: Freezing %d filters across %d layers (%.0f%% freeze ratio)",
+                  total_filters, len(layers_filters_to_freeze), freeze_portion * 100)
 
-        self._apply_freeze_hooks(detection_model, layers_filters_to_freeze)
+        freeze_nested = _build_freeze_nested_list(layers_filters_to_freeze)
+
+        _log.debug("TinyTrain freeze list: %d entries", len(freeze_nested))
+        if freeze_nested:
+            _log.debug("TinyTrain sample entry: %s (total filters in entry: %d)",
+                       freeze_nested[0][0], len(freeze_nested[0]) - 1)
+
         del model_copy
 
-    def _apply_freeze_hooks(self, internal_model, layers_filters_to_freeze):
-        for name, module in internal_model.named_modules():
-            weight_name = f"{name}.weight" if name else "weight"
-            if weight_name in layers_filters_to_freeze:
-                frozen_idx = set(layers_filters_to_freeze[weight_name])
-                h = module.weight.register_hook(_make_freeze_hook(frozen_idx))
-                self.hooks.append(h)
-
-        for name, module in internal_model.named_modules():
-            bias_name = f"{name}.bias" if name else "bias"
-            weight_name = f"{name}.weight" if name else "weight"
-            if weight_name in layers_filters_to_freeze and module.bias is not None:
-                frozen_idx = set(layers_filters_to_freeze[weight_name])
-                frozen_idx = {i for i in frozen_idx if i < module.bias.shape[0]}
-                if frozen_idx:
-                    h = module.bias.register_hook(_make_freeze_hook(frozen_idx))
-                    self.hooks.append(h)
-
-        print(f"  [TinyTrain] Registered {len(self.hooks)} gradient hooks")
-
-    def remove_hooks(self):
-        for h in self.hooks:
-            h.remove()
-        self.hooks = []
-        print("  [TinyTrain] Removed gradient hooks")
+        return freeze_nested
