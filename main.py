@@ -10,9 +10,11 @@ Usage:
     python main.py --train --name exp_001                          # train all enabled runs
     python main.py --train --run yolov8_nano --name exp_001        # train a single run
     python main.py --train --epochs 10 --device mps --name exp_001 # override epochs + device
+    python main.py --train --freeze-ratio 0.3 --name exp_001       # override TinyTrain freeze ratio
     python main.py --evaluate --name exp_001                       # evaluate all trained runs
     python main.py --evaluate --run yolov8_nano --name exp_001     # evaluate a single run
     python main.py --train --evaluate --name exp_001               # train then evaluate
+    python main.py --enabled                                        # list enabled runs and exit
 """
 
 import os
@@ -31,14 +33,24 @@ from models import create_model
 from training import create_trainer
 from evaluation import create_evaluator
 from evaluation.visualize import generate_all_plots
+from pipeline_utils.logging_utils import setup_logger
+
+log = setup_logger("pipeline", log_file="outputs/detection/pipeline.log")
 
 
 def detect_device() -> str:
     if torch.cuda.is_available():
-        return "cuda:0"
+        return "0"
     if torch.backends.mps.is_available():
         return "mps"
     return "cpu"
+
+
+def normalize_device(device: str) -> str:
+    dev = device.strip().lower()
+    if dev in ("cuda", "gpu"):
+        return "0"
+    return device
 
 
 def parse_args() -> argparse.Namespace:
@@ -49,9 +61,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run", type=str, default=None, help="Target a specific run_id (e.g. 'yolov8_nano')")
     parser.add_argument("--epochs", type=int, default=None, help="Override number of epochs for all runs")
     parser.add_argument("--device", type=str, default=None, help="Override device for all runs (e.g. 'cpu', 'mps', 'cuda:0')")
+    parser.add_argument("--freeze-ratio", type=float, default=None, help="Override TinyTrain freeze_portion (0.0–1.0) for all runs")
+    parser.add_argument("--enabled", action="store_true", default=False, help="List enabled runs and exit")
     parser.add_argument("--name", type=str, default=None, help="Experiment folder name (auto-generated if omitted)")
 
     args = parser.parse_args()
+    if args.enabled:
+        return args
     if not args.train and not args.evaluate:
         parser.print_help()
         print("\n  Error: specify at least one of --train or --evaluate.")
@@ -76,7 +92,7 @@ def resolve_experiment_name(name: str | None) -> str:
 
 def run_training(cfg, args, exp_name: str) -> dict:
     runs = _resolve_runs(cfg, args)
-    print(f"  Loaded config with {len(runs)} run(s) to train.\n")
+    log.info("Training %d run(s) in experiment '%s'", len(runs), exp_name)
 
     results = {}
     for run in runs:
@@ -92,13 +108,18 @@ def run_training(cfg, args, exp_name: str) -> dict:
             if args.epochs is not None:
                 override_kwargs["epochs"] = args.epochs
             if args.device is not None:
-                override_kwargs["device"] = args.device
+                override_kwargs["device"] = normalize_device(args.device)
+            if args.freeze_ratio is not None:
+                override_kwargs["freeze_ratio"] = args.freeze_ratio
 
+            log.info("Training %s (family=%s, variant=%s)",
+                     run.run_id, run.family, run.variant)
             result = trainer.train(**override_kwargs)
             results[run.run_id] = result
+            log.info("Training complete: %s", run.run_id)
 
         except Exception as e:
-            print(f"\n  [ERROR] Training {run.run_id} failed: {e}")
+            log.error("Training %s failed: %s", run.run_id, e, exc_info=True)
             results[run.run_id] = {"error": str(e)}
 
     return results
@@ -106,7 +127,7 @@ def run_training(cfg, args, exp_name: str) -> dict:
 
 def run_evaluation(cfg, args, exp_name: str) -> dict:
     runs = _resolve_runs(cfg, args)
-    print(f"  Loaded config with {len(runs)} run(s) to evaluate.\n")
+    log.info("Evaluating %d run(s) in experiment '%s'", len(runs), exp_name)
 
     metrics = {}
     for run in runs:
@@ -116,12 +137,15 @@ def run_evaluation(cfg, args, exp_name: str) -> dict:
 
             eval_kwargs = {}
             if args.device is not None:
-                eval_kwargs["device"] = args.device
+                eval_kwargs["device"] = normalize_device(args.device)
+            log.info("Evaluating %s ...", run.run_id)
             result = evaluator.evaluate(**eval_kwargs)
             metrics[run.run_id] = result
+            log.info("Evaluation complete: %s - mAP50=%.2f, mAP50-95=%.2f",
+                     run.run_id, result.get("map50"), result.get("map50_95"))
 
         except Exception as e:
-            print(f"\n  [ERROR] Evaluating {run.run_id} failed: {e}")
+            log.error("Evaluating %s failed: %s", run.run_id, e, exc_info=True)
             metrics[run.run_id] = {"error": str(e)}
 
     return metrics
@@ -135,6 +159,23 @@ def _resolve_runs(cfg, args):
             sys.exit(1)
         return [run]
     return cfg.enabled_runs
+
+
+def list_enabled_runs(cfg):
+    runs = cfg.enabled_runs
+    print(f"\n  Enabled runs ({len(runs)}):")
+    print(f"  {'─'*70}")
+    for r in runs:
+        tt = r.get("tiny_train")
+        if tt is None:
+            tt = cfg.global_config.get("tiny_train", {})
+        tt_enabled = tt.get("enabled", False)
+        tt_ratio = tt.get("freeze_portion", "—")
+        print(f"  {r.run_id:<38} {r.family}{r.variant:<5}  "
+              f"epochs={r.training.get('epochs','?'):<3}  "
+              f"TinyTrain={'Y' if tt_enabled else 'N'}  "
+              f"ratio={tt_ratio}")
+    print()
 
 
 def print_summary(results: dict, phase: str):
@@ -152,12 +193,16 @@ def main():
     args = parse_args()
     cfg = load_config()
 
+    if args.enabled:
+        list_enabled_runs(cfg)
+        return
+
     if args.device is None:
         args.device = detect_device()
-    print(f"  Device: {args.device}")
+    log.info("Device: %s", args.device)
 
     exp_name = resolve_experiment_name(args.name)
-    print(f"  Experiment: {exp_name}")
+    log.info("Experiment: %s", exp_name)
 
     if args.train:
         train_results = run_training(cfg, args, exp_name)

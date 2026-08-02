@@ -8,6 +8,7 @@ and saves results under outputs/detection/<experiment_name>/<run_id>/.
 
 import csv
 import json
+import logging
 import shutil
 import time
 from pathlib import Path
@@ -16,6 +17,8 @@ from typing import Any
 from configs.config_loader import RunConfig
 from models.base_model import BaseModel
 from evaluation.base_evaluation import BaseEvaluator
+
+_log = logging.getLogger("pipeline")
 
 
 class YOLOEvaluator(BaseEvaluator):
@@ -90,7 +93,46 @@ class YOLOEvaluator(BaseEvaluator):
         self._run_dir.mkdir(parents=True, exist_ok=True)
 
     def _extract_metrics(self, val_results, trained_model=None) -> dict[str, Any]:
+        _log.debug("Extracting metrics from val_results type=%s", type(val_results).__name__)
         metrics = {}
+
+        # Handle dict results from YOLOv5 standalone val()
+        _log.debug("val_results type: %s", type(val_results).__name__)
+        if hasattr(val_results, "__class__"):
+            _log.debug("val_results class: %s", val_results.__class__.__name__)
+            if hasattr(val_results, "box"):
+                _log.debug("val_results.box exists (type=%s)", type(val_results.box).__name__)
+
+        if isinstance(val_results, dict):
+            def safe_pct(x):
+                return None if x is None else round(float(x) * 100, 2)
+
+            metrics["map50_95"] = safe_pct(val_results.get("map50_95"))
+            metrics["map50"] = safe_pct(val_results.get("map50"))
+            metrics["precision"] = safe_pct(val_results.get("mp"))
+            metrics["recall"] = safe_pct(val_results.get("mr"))
+
+            p = metrics.get("precision")
+            r = metrics.get("recall")
+            if p is not None and r is not None and (p + r) > 0:
+                metrics["f1_score"] = round(2 * (p * r) / (p + r), 2)
+            else:
+                metrics["f1_score"] = 0.0
+
+            speed = val_results.get("speed")
+            if speed:
+                metrics["preprocess_ms"] = round(float(speed[0]), 2)
+                metrics["inference_ms"] = round(float(speed[1]), 2)
+                metrics["postprocess_ms"] = round(float(speed[2]), 2)
+                metrics["total_per_image_ms"] = round(sum(float(s) for s in speed), 2)
+
+            if trained_model is not None:
+                try:
+                    metrics["model_params"] = sum(p.numel() for p in trained_model.parameters())
+                except Exception:
+                    pass
+
+            return metrics
 
         if hasattr(val_results, "box") and val_results.box is not None:
             box = val_results.box
@@ -151,6 +193,10 @@ class YOLOEvaluator(BaseEvaluator):
             except Exception:
                 pass
 
+        _log.info("Extracted metrics: map50=%.2f, map50-95=%.2f, P=%.2f, R=%.2f, F1=%.2f",
+                  metrics.get("map50"), metrics.get("map50_95"),
+                  metrics.get("precision"), metrics.get("recall"),
+                  metrics.get("f1_score"))
         return metrics
 
     def _get_model_file_size(self, weights_path: Path) -> float:
@@ -250,14 +296,15 @@ class YOLOEvaluator(BaseEvaluator):
         print(f"{'='*60}")
 
         weights = self._resolve_weights(weights_path)
-        print(f"  Weights: {weights}")
+        _log.info("Evaluator resolved weights: %s (exists=%s, size=%d bytes)",
+                  weights, weights.exists(), weights.stat().st_size if weights.exists() else 0)
 
         self._setup_output_dir()
 
-        print(f"  Loading trained model ...")
+        _log.info("Loading model from %s ...", weights)
         self._model.load(str(weights))
 
-        print(f"  Running validation ...")
+        _log.info("Running validation ...")
         val_results = self._model.val(**kwargs)
 
         print(f"  Extracting metrics ...")
