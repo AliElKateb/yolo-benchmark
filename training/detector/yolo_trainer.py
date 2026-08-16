@@ -46,15 +46,20 @@ class YOLOTrainer(BaseTrainer):
         print(f"  Model: {self._config.family} {self._config.variant}")
         print(f"{'='*60}")
 
-        if not self.validate_dataset():
+        weights = kwargs.pop("weights", None)
+        data_yaml = kwargs.get("data") or None
+        if weights is not None:
+            print(f"  Retraining from checkpoint: {weights}")
+
+        if not self.validate_dataset(data_yaml):
             raise FileNotFoundError(
                 f"Cannot train {run_id}: dataset not found."
             )
 
         print(f"  Loading weights for {run_id} ...")
-        self._model.load()
+        self._model.load(weights)
         print(f"  Training {run_id} ...")
-        results = self._model.train(**kwargs)
+        results = self._model.train(weights=weights, **kwargs)
 
         print(f"  Training complete: {run_id}")
         return results

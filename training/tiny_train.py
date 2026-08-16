@@ -158,6 +158,7 @@ class TinyTrain:
         device: str = "cpu",
         imgsz: int | list = 640,
         family: str = "yolov5",
+        weights_path: str | Path | None = None,
     ) -> list:
         if isinstance(imgsz, (list, tuple)):
             imgsz = imgsz[0]
@@ -165,11 +166,19 @@ class TinyTrain:
         if isinstance(device, str) and device.isdigit():
             device = f"cuda:{device}"
 
-        _log.info("TinyTrain: Loading %s for importance estimation", f"{family}{variant}.pt")
-        from ultralytics import YOLO
-        model_path = f"{family}{variant}.pt"
-        model = YOLO(model_path)
-        detection_model = model.model
+        model_path = str(weights_path) if weights_path else f"{family}{variant}.pt"
+        _log.info("TinyTrain: Loading %s for importance estimation", model_path)
+        if family == "yolov5":
+            # ultralytics refuses YOLOv5 checkpoints, so load via the yolov5 repo
+            from models.detection.yolo_detector import _yolov5_import_context
+            with _yolov5_import_context():
+                from models.experimental import attempt_load
+                detection_model = attempt_load(model_path, device="cpu", fuse=False)
+            detection_model.eval()
+        else:
+            from ultralytics import YOLO
+            model = YOLO(model_path)
+            detection_model = model.model
 
         model_copy = copy.deepcopy(detection_model)
         model_copy.train()

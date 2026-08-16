@@ -44,8 +44,28 @@ def _load_csv(csv_path: Path) -> list[dict]:
         return list(csv.DictReader(f))
 
 
+def _strategy_tag(run_id: str) -> str | None:
+    """Return a clean strategy label for merged run ids (base_*, tt0.xx_*, whole_*)."""
+    tag = run_id.split("_", 1)[0].lower()
+    if tag == "base":
+        return "Baseline"
+    if tag.startswith("tt"):
+        try:
+            return f"TT {float(tag[2:]) * 100:g}%"
+        except ValueError:
+            return tag
+    if tag == "whole":
+        return "Full retrain"
+    return None
+
+
 def _model_label(run_id: str) -> str:
-    return run_id.replace("yolov5_", "v5 ").replace("yolov8_", "v8 ")
+    strat = _strategy_tag(run_id)
+    model = run_id.replace("yolov5_", "v5 ").replace("yolov8_", "v8 ")
+    if strat is None:
+        return model
+    short = run_id.split("_", 1)[1].replace("yolov5_", "v5 ").replace("yolov8_", "v8 ")
+    return f"{strat}\n{short}"
 
 
 def _plot_bar(ax, labels, groups, ylabel, palette=None):
@@ -58,7 +78,7 @@ def _plot_bar(ax, labels, groups, ylabel, palette=None):
         offset = (i - (n - 1) / 2) * w
         ax.bar(x + offset, vals, w, label=name, color=palette[i % len(palette)], zorder=3)
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, fontsize=9)
+    ax.set_xticklabels(labels, fontsize=9, rotation=15, ha="right")
     ax.set_ylabel(ylabel)
     ax.legend(frameon=True, facecolor="white", edgecolor=LIGHT_GRAY, fontsize=9)
     ax.set_axisbelow(True)
@@ -97,7 +117,7 @@ def _plot_inference_speed(data, output_dir):
     ax.bar(x - w / 2, inf, w, label="Inference", color=PALETTE[0], zorder=3)
     ax.bar(x + w / 2, total, w, label="Total", color=PALETTE[1], zorder=3)
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, fontsize=9)
+    ax.set_xticklabels(labels, fontsize=9, rotation=15, ha="right")
     ax.set_ylabel("Milliseconds")
     ax.set_title("Inference Speed  (lower is better)")
     ax.legend(frameon=True, facecolor="white", edgecolor=LIGHT_GRAY, fontsize=9)
@@ -122,7 +142,7 @@ def _plot_model_size(data, output_dir):
     ax2.set_ylabel("Size (MB)")
 
     ax1.set_xticks(x)
-    ax1.set_xticklabels(labels, fontsize=9)
+    ax1.set_xticklabels(labels, fontsize=9, rotation=15, ha="right")
     ax1.set_title("Model Size & Parameters")
 
     lines = [plt.Rectangle((0, 0), 1, 1, color=PALETTE[0]),
