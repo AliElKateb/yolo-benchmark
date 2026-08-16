@@ -53,14 +53,18 @@ class BaseTrainer(ABC):
         """
         ...
 
-    def validate_dataset(self) -> bool:
+    def validate_dataset(self, data_yaml: str | None = None) -> bool:
         """
         Check that the dataset's data.yaml exists before training.
+
+        Args:
+            data_yaml: Optional override for the data.yaml to validate
+                       (e.g. the baseline or retrain split yaml).
 
         Returns:
             True if the dataset yaml was found, False otherwise.
         """
-        data_yaml = self._config.dataset.get("data_yaml", "")
+        data_yaml = data_yaml or self._config.dataset.get("data_yaml", "")
         if not data_yaml:
             print("  [WARN] No data_yaml specified in config.")
             return False

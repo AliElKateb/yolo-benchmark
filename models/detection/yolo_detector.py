@@ -1,5 +1,6 @@
 import contextlib
 import sys
+import types
 from pathlib import Path
 from typing import Any
 
@@ -58,19 +59,50 @@ def _import_yolov5(module_name: str):
         return __import__(module_name)
 
 
+def _resolve_torch_device(device):
+    """Normalize a device string (e.g. '0' -> 'cuda:0') for torch .to()/.cuda()."""
+    if isinstance(device, str) and device.strip().isdigit():
+        return f"cuda:{device.strip()}"
+    return device
+
+
+def _load_yolov5_model(path: str | Path, device="cpu"):
+    """Load a YOLOv5-format checkpoint via the yolov5 repo's own loader.
+
+    ultralytics refuses YOLOv5 checkpoints (they pickle 'models.yolo'), so the
+    yolov5 family must load/train/val through the vendored yolov5 repository.
+    Returns a lightweight object exposing `.model` (the DetectionModel) and
+    `.ckpt_path` (used for locating weights at val time).
+    """
+    with _yolov5_import_context():
+        from models.experimental import attempt_load
+        model = attempt_load(str(path), device=_resolve_torch_device(device), fuse=False)
+    model.eval()
+    return types.SimpleNamespace(model=model, ckpt_path=str(path))
+
+
 class YOLODetector(BaseModel):
 
     def __init__(self, config: RunConfig):
         super().__init__(config)
         self._model: YOLO | None = None
+        self._last_freeze_list: list | None = None
 
     @property
     def model(self) -> YOLO | None:
         return self._model
 
+    @property
+    def last_freeze_list(self) -> list | None:
+        """Nested freeze list computed by TinyTrain during the last train() call."""
+        return self._last_freeze_list
+
     def load(self, weights_path: str | Path | None = None):
         path = weights_path or f"{self.family}{self.variant}.pt"
-        self._model = YOLO(str(path))
+        if self.family == "yolov5":
+            self._model = _load_yolov5_model(str(path), device="cpu")
+        else:
+            self._model = YOLO(str(path))
 
     @staticmethod
     def _single(v):
@@ -124,15 +156,23 @@ class YOLODetector(BaseModel):
 
         family = self._config.family
         ds = self._config.dataset
-        data_yaml = ds.get("data_yaml", "./dataset/data.yaml")
+
+        data_yaml = override_kwargs.pop("data", ds.get("data_yaml", "./dataset/data.yaml"))
+        weights_path = override_kwargs.pop("weights", None)
+        tiny_train_enabled = override_kwargs.pop("tiny_train_enabled", None)
 
         freeze_ratio = override_kwargs.pop("freeze_ratio", None)
         tt_config = self._config.get("tiny_train") or self._config.global_config.get("tiny_train", {})
         if freeze_ratio is not None:
             tt_config = {**tt_config, "freeze_portion": freeze_ratio}
+        if tiny_train_enabled is not None:
+            tt_config = {**tt_config, "enabled": bool(tiny_train_enabled)}
 
         if family == "yolov5":
             train_args = self._build_yolov5_train_args(override_kwargs)
+            train_args["data"] = data_yaml
+            if weights_path is not None:
+                train_args["weights"] = str(weights_path)
             _log.debug("YOLOv5 train args: freeze=%s (type=%s)",
                        train_args.get("freeze"), type(train_args.get("freeze")).__name__)
 
@@ -146,12 +186,16 @@ class YOLODetector(BaseModel):
                     device=str(train_args.get("device", "cpu")),
                     imgsz=train_args.get("imgsz", 640),
                     family="yolov5",
+                    weights_path=weights_path,
                 )
+                self._last_freeze_list = freeze_list
                 _log.info("TinyTrain returned freeze list with %d entries", len(freeze_list))
                 if freeze_list:
                     train_args["freeze"] = freeze_list
                     _log.info("OVERRIDE freeze with TinyTrain nested list (%d layer groups)",
                               len(freeze_list))
+            else:
+                self._last_freeze_list = None
 
             yolov5_train = _import_yolov5("train")
 
@@ -231,12 +275,16 @@ class YOLODetector(BaseModel):
                     device=str(args.get("device", "cpu")),
                     imgsz=self._config.inference.get("imgsz", 640),
                     family="yolov8",
+                    weights_path=weights_path,
                 )
+                self._last_freeze_list = freeze_list
                 _log.info("TinyTrain returned freeze list with %d entries", len(freeze_list))
                 if freeze_list:
                     args["freeze"] = freeze_list
                     _log.info("OVERRIDE freeze with TinyTrain nested list (%d layer groups)",
                               len(freeze_list))
+            else:
+                self._last_freeze_list = None
 
         if family == "yolov8":
             args["project"] = str(Path(args["project"]).resolve())

@@ -82,6 +82,14 @@ class RunConfig:
         return self._data.get("dataset", {})
 
     @property
+    def baseline_data(self) -> str:
+        return self.dataset.get("baseline_data") or self.dataset.get("data_yaml", "")
+
+    @property
+    def retrain_data(self) -> str:
+        return self.dataset.get("retrain_data") or self.dataset.get("data_yaml", "")
+
+    @property
     def hyperparameters(self) -> dict:
         return self._data.get("hyperparameters", {})
 
